@@ -1,14 +1,13 @@
 import pandas as pd
 
 
-#read in data
+# read in data
 df = pd.read_csv('C:/Learnpro_extracts/data.xls', skiprows=14, sep='\t')
 
 
 print(df.columns)
 
-#print(df['Course'].unique())
-
+# list of modules required for compliance
 modules = ['GGC: 001 Fire Safety',
            'GGC: Health and Safety, an Introduction',
            'GGC: 003 Reducing Risks of Violence & Aggression',
@@ -28,7 +27,6 @@ modules = ['GGC: 001 Fire Safety',
            'GGC: Management of Needlestick & Similar Injuries',
            'NES: Prevention and Management of Occ. Exposure',
            'NES: Prev. and Mgmt. of Occ. Exposure (Assessment)',
-           'Infection Prevention and Control Covid-19',
            'Pressure Ulcer Prevention',
            'Medicines Administration',
            'Food Fluid and Nutrition',
@@ -54,17 +52,18 @@ modules = ['GGC: 001 Fire Safety',
            'Safe Blood Sampling for Transfusion'
            ]
 
-print(len(df))
-df = df[(df['Module'].isin(modules)) & (df['Passed'] == "Yes")]
-print(len(df))
 
+# remove extraneous modules
+df = df[(df['Module'].isin(modules)) & (df['Passed'] == "Yes")]
+
+# check number of passes per module
 for i in modules:
     print(i + str(len(df[df['Module'] == i])))
 
-users = df['ID Number'].unique().tolist()
-print(type(users))
 
-data = pd.DataFrame()
+# get list of all user ids within this extract
+users = df['ID Number'].unique().tolist()
+
 # list of courses outside of the stat/mand ones
 courses = ['GGC: 234 RN Update – COVID-19 Contingencies', 'LBT: Blood Components and Indications for Use',
            'LBT: Safe Blood Sampling for Transfusion Video', 'LBT: Safe Transfusion Practice',
@@ -73,25 +72,20 @@ courses = ['GGC: 234 RN Update – COVID-19 Contingencies', 'LBT: Blood Componen
 
 # code to get all modules contained in a course
 for i in courses:
-    print(i + '\n' + df[df['Course'] == i]['Module'].unique().tolist())
+    print(df[df['Course'] == i]['Module'].unique().tolist())
 
 
-print(df['Course'].unique())
-
-
-
-
-for j in modules:
-    temp_frame = df[df['Module'] == j]['ID Number'].unique()
-    print(j + str(len(users)))
-    for i in users:
-        if i not in temp_frame:
-            users.remove(i)
+# iterate through each module, then list of users. Delete user if they don't have required module pass.
+for module in modules:
+    temp_frame = df[df['Module'] == module]['ID Number'].unique()
+    for user in users:
+        if user not in temp_frame:
+            users.remove(user)
+    # print current length of users list
+    print(module + " - " + str(len(users)))
 
 data = pd.DataFrame(users)
 data.to_csv('C:/Learnpro_extracts/compliant_users.csv', index=False)
-
-
 
 
 
