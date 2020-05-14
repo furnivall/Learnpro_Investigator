@@ -47,6 +47,7 @@ def take_in_dir():
 
     print(str(lp_count+non_lp_count) + " files read. " + str(lp_count) +" contained learnpro data, "+str(non_lp_count) +
           " did not.")
+    print(master['Module'].unique())
 
 
 take_in_dir()
