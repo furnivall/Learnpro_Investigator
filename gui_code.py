@@ -1,14 +1,20 @@
 from tkinter import *
 from tkinter.filedialog import askdirectory, askopenfilename
-import stat_mand_modules
+# import stat_mand_modules
+import pandas as pd
+
 window = Tk()
 window.title("LearnPro Investigator - NHS GGC")
 window.geometry('640x480')
+file = pd.DataFrame()
 
 
 def read_in_file():
-    file = askopenfilename(initialdir='//ntserver5/generalDB/WorkforceDB/Learnpro/data', title="Choose a learnpro file",
-                           )
+    filename = askopenfilename(initialdir='//ntserver5/generalDB/WorkforceDB/Learnpro/data',
+                               title="Choose a learnpro file")
+    global file
+    file = pd.read_csv(filename, sep="\t", skiprows=14)
+    loading_label.configure(text=file.columns)
 
 
 def get_dir():
@@ -17,30 +23,28 @@ def get_dir():
                            )
     dir_label.configure(text=dirname)
 
+
 def get_indiv_compliance():
-    #TODO exception handling
+    # TODO exception handling
     data = "Input: " + individual_compliance_input.get()
     individual_compliance_label.configure(text=data)
+
 
 individual_compliance_label = Label(window, text="<text goes here>")
 dir_label = Label(window, text="<no directory currently selected.>")
 get_dir_button = Button(window, text="Import directory", command=get_dir)
 individual_compliance_input = Entry(window, width=50)
-individual_compliance_button = Button(window, text="Get user compliance.", command = get_indiv_compliance)
-quit_button = Button(window, text="Quit", command = quit)
+individual_compliance_button = Button(window, text="Get user compliance.", command=get_indiv_compliance)
+quit_button = Button(window, text="Quit", command=quit)
 
-rad_button_stat_mand = Radiobutton(window, text="Stat mand boxes", value=1, command=stat_mand_modules.read_file)
-rad_button_RN_reqs = Radiobutton(window, text="RN Compliance", value=2)
-rad_button_manual = Radiobutton(window, text="Select specific modules", value=3)
-loading_label = Label(window, text="")
+read_file = Button(window, text="Read in file", command=read_in_file)
 
+loading_label = Label(window, text="No file currently imported.")
 
-rad_button_stat_mand.pack()
-rad_button_RN_reqs.pack()
-rad_button_manual.pack()
-
-individual_compliance_label.pack()
-individual_compliance_button.pack()
+read_file.pack(side=TOP)
+get_dir_button.pack(side=TOP)
+individual_compliance_label.pack(side=LEFT)
+individual_compliance_button.pack(side=LEFT)
 individual_compliance_input.pack()
 dir_label.pack()
 get_dir_button.pack()
