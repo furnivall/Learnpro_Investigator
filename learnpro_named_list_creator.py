@@ -10,6 +10,9 @@ import os
 import numpy as np
 time = pd.Timestamp.now()
 
+with open("C:/Learnpro_Extracts/eesslookup.txt", "r") as file:
+    line = file.read()
+eesslookup = eval(line)
 
 staff_download = pd.read_excel('W:/Staff Downloads/2020-04 - Staff Download.xlsx')
 staff_ids = staff_download['Pay_Number'].unique().tolist()
