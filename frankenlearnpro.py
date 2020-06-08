@@ -225,15 +225,87 @@ def ni_fix(df):
     df.reset_index()
     return df
 
+def SM_num_maker(df):
+    """This function adds the SM1-9 columns, which exist in the old named list format produced by CompliancePro"""
+
+    SM_lookup = {'Fire Awareness': 'SM2', 'Health, Safety & Welfare': 'SM3', 'Violence and Aggression': 'SM9',
+                 'Equality, Diversity and Human Rights': 'SM1', 'Manual Handling': 'SM6', 'Infection Control': 'SM4',
+                 'Public Protection': 'SM7', 'Security and Threat': 'SM8', 'Information Governance': 'SM5'}
+
+    for i in SM_lookup:
+
+        df[SM_lookup.get(i)] = np.where(df[i] == 'Complete', 1, 0)
+
+    return df
+
+def sd_merge(df):
+    """This function merges in the Staff Download data to let us work with identifiable stuff for our pivot"""
+
+    # legacy - good for excel pivots
+    df['Headcount'] = 1
+
+    #TODO point this somewhere else
+    sd = pd.read_excel('W:/Staff Downloads/2020-04 - Staff Download.xlsx')
+
+
+    # Cleaning step - vital for merge to work properly - ID number must be on both sides of merge
+    sd = sd.rename(columns={'Pay_Number': 'ID Number', 'Forename':'First', 'Surname':'Last'})
+
+    # cut down to useful cols
+    sd = sd[['ID Number', 'NI_Number', 'Area', 'Sector/Directorate/HSCP', 'Sub-Directorate 1', 'Sub-Directorate 2',
+             'department','Cost_Centre','First', 'Last', 'Job_Family', 'Sub_Job_Family']]
+
+    #merge
+    df = df.merge(sd, on='ID Number', how='right')
+
+    return df
+
+def produce_files(df):
+    """Builds final files for named list"""
+
+    # subset for final named list
+    df2 = df[['ID Number', 'Area', 'Sector/Directorate/HSCP', 'Sub-Directorate 1', 'Sub-Directorate 2', 'department',
+              'Cost_Centre', 'First', 'Last', 'Job_Family', 'Sub_Job_Family', 'Equality, Diversity and Human Rights',
+              'Fire Awareness', 'Health, Safety & Welfare', 'Infection Control', 'Information Governance',
+              'Manual Handling', 'Public Protection', 'Security and Threat', 'Violence and Aggression',
+              'Equality, Diversity and Human Rights expires on...', 'Fire Awareness expires on...',
+              'Health, Safety & Welfare expires on...','Infection Control expires on...',
+              'Information Governance expires on...', 'Manual Handling expires on...','Public Protection expires on...',
+              'Security and Threat expires on...', 'Violence and Aggression expires on...', 'SM1', 'SM2', 'SM3', 'SM4',
+              'SM5', 'SM6', 'SM7', 'SM8', 'SM9', 'Headcount']]
+
+    # build pivot tab for comparison
+    piv = pd.pivot_table(df, index='Sector/Directorate/HSCP',
+                         values=['SM1', 'SM2', 'SM3', 'SM4', 'SM5', 'SM6', 'SM7', 'SM8', 'SM9'],
+                         aggfunc=np.sum, margins=True)
+    # produce compliance percentage row
+    piv.loc['% Compliance'] = round(piv.iloc[-1] / 39802 * 100, 1)
+
+    # write to book
+    with pd.ExcelWriter('C:/Learnpro_Extracts/namedList.xlsx') as writer:
+        df2.to_excel(writer, sheet_name='data', index=False)
+        piv.to_excel(writer, sheet_name='pivot')
+
+    # for debugging - make csv file with all columns and data
+    df.to_csv("C:/Learnpro_Extracts/namedList.csv")
+
+
+
+
+
 def check_compliance(df):
     """Takes in a df with test dates for each of the stat/mand modules, including both versions of safe info handling.
     It will produce a completed named list dataset ala the old CompliancePro"""
+
     print(df.columns)
-    # dealing with multiple types of safe info handling files
+
+    # dealing with multiple types of fire safety files - not actually relevant any more but doesn't slow anything down
     fire_mods = ['GGC: 001 Fire Safety',
                  'GGC E&F StatMand - General Awareness Fire Safety Training (face to face session)',
                  'Fire Emergency within the Ward', 'Fire Fighting Equipment', 'Fire Prevention',
                  'Introduction and General Fire Safety', 'Specialist Roles']
+
+    # iterate through modules, grabbing their test dates as appropriate
     for module in stat_mand:
         columnnames = {'GGC: 001 Fire Safety': 'Fire Awareness',
                        'GGC: Health and Safety, an Introduction': 'Health, Safety & Welfare',
@@ -244,9 +316,12 @@ def check_compliance(df):
                        'GGC: 008 Security & Threat': 'Security and Threat',
                        }
         if module in fire_mods:
+            # add 1 year to fire test date to get expiry, then go to start of loop again
             df[module + ' Date'] = df[module + ' Date'] + pd.DateOffset(years=1)
             continue
 
+
+        # deal with info gov
         if module in ['GGC: 009 Safe Information Handling',
                       'Safe Information Handling']:
             df[module + ' Date'] = df[module + ' Date'] + pd.DateOffset(years=3)
@@ -258,17 +333,17 @@ def check_compliance(df):
             df['Information Governance expires on...'] = df['Information Governance Date'] + pd.DateOffset(years=3)
             continue
 
+        # the courses all have a shorter name to look nicer (see above dictionary)
         short_name = columnnames.get(module)
-        print(df[module + ' Date'][100])
 
+        # attach compliance to all except infogov and fire. It is likely this will need to be changed to capture more
         df[short_name] = np.where(df[module + ' Date'].notnull(), "Complete", "Not Compliant")
         df[str(short_name) + ' expires on...'] = df[module + ' Date'] + pd.DateOffset(years=3)
 
-        print(type(df[module + ' Date'][0]))
-        print(module)
 
-    # TODO public protection
 
+
+    # pub prot
     df['Public Protection'] = np.where(df['Adult Support & Protection Date'].notnull() &
                                        df['Child Protection - Level 1 Date'].notnull(), "Complete", "Not Compliant")
 
@@ -279,11 +354,10 @@ def check_compliance(df):
 
     df['Public Protection expires on...'].loc[df['Public Protection'] == 'Not Compliant'] = None
 
-    # get expiry for each of these
-
-    print(df['GGC: 001 Fire Safety Date'].head)
+    # get most recent fire pass from all modules
     df['Fire Awareness expires on...'] = np.where(df['GGC: 001 Fire Safety Date'].notnull(),
                                                   df['GGC: 001 Fire Safety Date'], df[fire_mods_dates].min(axis=1))
+
     # TODO change this to max import date
     startdate_fire = pd.to_datetime('31-05-20', format='%d-%m-%y')
     enddate_fire = startdate_fire + pd.DateOffset(years=1)
@@ -291,57 +365,18 @@ def check_compliance(df):
                  (df['Fire Awareness expires on...'] <= enddate_fire)
     df['Fire Awareness'] = np.where(date_range, "Complete", "Not Compliant")
 
+    # merge staff download cols into dataset
+    df = sd_merge(df)
 
-    df['Headcount'] = 1
-    print(df.columns)
-
-    sd = pd.read_excel('W:/Staff Downloads/2020-04 - Staff Download.xlsx')
-    sd = sd.rename(columns={'Pay_Number': 'ID Number'})
-    sd = sd[['ID Number', 'NI_Number', 'Area', 'Sector/Directorate/HSCP', 'Sub-Directorate 1', 'Sub-Directorate 2', 'department',
-             'Cost_Centre',
-             'Forename', 'Surname', 'Job_Family', 'Sub_Job_Family']]
-    print(len(sd))
-    print(len(df))
-
-    df = df.merge(sd, on='ID Number', how='right')
-    print(len(df))
-    df = df.rename(columns={'Forename': 'First', 'Surname': 'Last'})
-
-    #TODO potentially add NI number fix here?
+    # fix for people with more than one pay number
     df = ni_fix(df)
 
-    SM_lookup = {'Fire Awareness': 'SM2', 'Health, Safety & Welfare': 'SM3', 'Violence and Aggression': 'SM9',
-                 'Equality, Diversity and Human Rights': 'SM1', 'Manual Handling': 'SM6', 'Infection Control': 'SM4',
-                 'Public Protection': 'SM7', 'Security and Threat': 'SM8', 'Information Governance': 'SM5'}
-    for i in SM_lookup:
-        print(SM_lookup.get(i))
-        df[SM_lookup.get(i)] = np.where(df[i] == 'Complete', 1, 0)
+    # add cols for SM1-9 to keep legacy shape ala compliancepro
+    df = SM_num_maker(df)
 
-    # TODO drop NI Number from below
-    df2 = df[['ID Number', 'NI_Number', 'Area', 'Sector/Directorate/HSCP', 'Sub-Directorate 1',
-              'Sub-Directorate 2', 'department', 'Cost_Centre', 'First', 'Last',
-              'Job_Family', 'Sub_Job_Family', 'Equality, Diversity and Human Rights',
-              'Fire Awareness', 'Health, Safety & Welfare', 'Infection Control',
-              'Information Governance', 'Manual Handling', 'Public Protection',
-              'Security and Threat', 'Violence and Aggression',
-              'Equality, Diversity and Human Rights expires on...',
-              'Fire Awareness expires on...',
-              'Health, Safety & Welfare expires on...',
-              'Infection Control expires on...',
-              'Information Governance expires on...', 'Manual Handling expires on...',
-              'Public Protection expires on...', 'Security and Threat expires on...',
-              'Violence and Aggression expires on...', 'SM1', 'SM2', 'SM3', 'SM4',
-              'SM5', 'SM6', 'SM7', 'SM8', 'SM9', 'Headcount']]
+    # wrap up and produce final files
+    produce_files(df)
 
-    piv = pd.pivot_table(df, index='Sector/Directorate/HSCP',
-                         values=['SM1', 'SM2', 'SM3', 'SM4', 'SM5', 'SM6', 'SM7', 'SM8', 'SM9'],
-                         aggfunc=np.sum, margins=True)
-    piv.loc['% Compliance'] = round(piv.iloc[-1] / 39802 * 100, 1)
-
-    with pd.ExcelWriter('C:/Learnpro_Extracts/namedList.xlsx') as writer:
-        df2.to_excel(writer, sheet_name='data', index=False)
-        piv.to_excel(writer, sheet_name='pivot')
-    df.to_csv("C:/Learnpro_Extracts/namedList.csv")
 
 
 master_data, user_number = take_in_dir(stat_mand)
@@ -349,10 +384,3 @@ print(type(master_data['Assessment Date'][0]))
 dates_frame = build_user_compliance_dates(master_data)
 check_compliance(dates_frame)
 
-exit()
-users = users_file()
-print("Learnpro Users: " + str(len(users)) + " users.")
-print(users.columns)
-
-sd = sd_pull()
-print("Staff Download: " + str(len(sd)) + " users.")
