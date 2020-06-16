@@ -55,6 +55,14 @@ def users_file():  # UNUSED CURRENTLY
     return df
 
 
+def empower(date):
+    """ This function takes in a date and reduces the empower extract to only those within the 3 year expiry period"""
+    df = pd.read_excel('C:/Learnpro_extracts/LP_testData_31-05-20/empower_final.xlsx')
+    print(df['Assessment Date'].iloc[0])
+    df = df[df['Assessment Date'] > pd.to_datetime(date) - pd.DateOffset(years=3)]
+    return df
+
+
 def take_in_dir(list_of_modules):
     """Takes in directory with prompt then selects all learnpro files within that folder"""
 
@@ -73,6 +81,7 @@ def take_in_dir(list_of_modules):
     # initialise master dataframe
     master = pd.DataFrame()
     modules = []
+    # read in historic empower data
 
     # iterate through directory
     for file in os.listdir(dirname):
@@ -96,6 +105,7 @@ def take_in_dir(list_of_modules):
             print("Removed extra modules - new length: " + str(len(df)))
             # add data to master file
             master = master.append(df, ignore_index=True)
+
             print(file + " added to master, current size= " + str(len(master)))
 
         else:
@@ -111,8 +121,15 @@ def take_in_dir(list_of_modules):
     master['Assessment Date'] = pd.to_datetime(master['Assessment Date'], format='%d/%m/%y %H:%M')
     eess = eESS('C:/Learnpro_Extracts/LP_testData_31-05-20/eESS learning.xlsx')
     master = master.append(eess, ignore_index=True)
+
+    # deal with empower
+    empower_data = empower('31-05-2020')
+    master = master.append(empower_data)
+
+    # create master list of id numbers
     df_users = master['ID Number'].unique().tolist()
 
+    # beautiful and elegant nested list comprehension
     modules = [item for sublist in modules for item in sublist]
     modules = list(dict.fromkeys(modules))
 
@@ -210,7 +227,8 @@ def ni_fix(df):
     # this is to make df.update() be able to compare indices and amend data
     df.set_index('ID Number')
 
-    courses = ['Equality, Diversity and Human Rights', 'Fire Awareness', 'Health, Safety & Welfare','Infection Control',
+    courses = ['Equality, Diversity and Human Rights', 'Fire Awareness', 'Health, Safety & Welfare',
+               'Infection Control',
                'Information Governance', 'Manual Handling', 'Public Protection', 'Security and Threat',
                'Violence and Aggression']
 
@@ -225,6 +243,7 @@ def ni_fix(df):
     df.reset_index()
     return df
 
+
 def SM_num_maker(df):
     """This function adds the SM1-9 columns, which exist in the old named list format produced by CompliancePro"""
 
@@ -233,10 +252,10 @@ def SM_num_maker(df):
                  'Public Protection': 'SM7', 'Security and Threat': 'SM8', 'Information Governance': 'SM5'}
 
     for i in SM_lookup:
-
         df[SM_lookup.get(i)] = np.where(df[i] == 'Complete', 1, 0)
 
     return df
+
 
 def sd_merge(df):
     """This function merges in the Staff Download data to let us work with identifiable stuff for our pivot"""
@@ -244,21 +263,21 @@ def sd_merge(df):
     # legacy - good for excel pivots
     df['Headcount'] = 1
 
-    #TODO point this somewhere else
+    # TODO point this somewhere else
     sd = pd.read_excel('W:/Staff Downloads/2020-04 - Staff Download.xlsx')
 
-
     # Cleaning step - vital for merge to work properly - ID number must be on both sides of merge
-    sd = sd.rename(columns={'Pay_Number': 'ID Number', 'Forename':'First', 'Surname':'Last'})
+    sd = sd.rename(columns={'Pay_Number': 'ID Number', 'Forename': 'First', 'Surname': 'Last'})
 
     # cut down to useful cols
     sd = sd[['ID Number', 'NI_Number', 'Area', 'Sector/Directorate/HSCP', 'Sub-Directorate 1', 'Sub-Directorate 2',
-             'department','Cost_Centre','First', 'Last', 'Job_Family', 'Sub_Job_Family']]
+             'department', 'Cost_Centre', 'First', 'Last', 'Job_Family', 'Sub_Job_Family']]
 
-    #merge
+    # merge
     df = df.merge(sd, on='ID Number', how='right')
 
     return df
+
 
 def produce_files(df):
     """Builds final files for named list"""
@@ -269,8 +288,9 @@ def produce_files(df):
               'Fire Awareness', 'Health, Safety & Welfare', 'Infection Control', 'Information Governance',
               'Manual Handling', 'Public Protection', 'Security and Threat', 'Violence and Aggression',
               'Equality, Diversity and Human Rights expires on...', 'Fire Awareness expires on...',
-              'Health, Safety & Welfare expires on...','Infection Control expires on...',
-              'Information Governance expires on...', 'Manual Handling expires on...','Public Protection expires on...',
+              'Health, Safety & Welfare expires on...', 'Infection Control expires on...',
+              'Information Governance expires on...', 'Manual Handling expires on...',
+              'Public Protection expires on...',
               'Security and Threat expires on...', 'Violence and Aggression expires on...', 'SM1', 'SM2', 'SM3', 'SM4',
               'SM5', 'SM6', 'SM7', 'SM8', 'SM9', 'Headcount']]
 
@@ -288,9 +308,6 @@ def produce_files(df):
 
     # for debugging - make csv file with all columns and data
     df.to_csv("C:/Learnpro_Extracts/namedList.csv")
-
-
-
 
 
 def check_compliance(df):
@@ -320,7 +337,6 @@ def check_compliance(df):
             df[module + ' Date'] = df[module + ' Date'] + pd.DateOffset(years=1)
             continue
 
-
         # deal with info gov
         if module in ['GGC: 009 Safe Information Handling',
                       'Safe Information Handling']:
@@ -339,9 +355,6 @@ def check_compliance(df):
         # attach compliance to all except infogov and fire. It is likely this will need to be changed to capture more
         df[short_name] = np.where(df[module + ' Date'].notnull(), "Complete", "Not Compliant")
         df[str(short_name) + ' expires on...'] = df[module + ' Date'] + pd.DateOffset(years=3)
-
-
-
 
     # pub prot
     df['Public Protection'] = np.where(df['Adult Support & Protection Date'].notnull() &
@@ -378,9 +391,7 @@ def check_compliance(df):
     produce_files(df)
 
 
-
 master_data, user_number = take_in_dir(stat_mand)
 print(type(master_data['Assessment Date'][0]))
 dates_frame = build_user_compliance_dates(master_data)
 check_compliance(dates_frame)
-
