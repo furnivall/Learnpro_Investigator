@@ -28,7 +28,7 @@ stat_mand = ['GGC: 001 Fire Safety',
              'GGC E&F StatMand - Equality, Diversity & Human Rights (face to face session)',
              'GGC E&F StatMand - Health & Safety an Induction (face to face session)',
              'GGC E&F StatMand - Manual Handling Theory (face to face session)',
-             'GGC E&F StatMand - Public Protection (face to face session)',
+             'Public Protection - eESS',
              'GGC E&F StatMand - Reducing Risks of Violence & Aggression(face to face session)',
              'GGC E&F StatMand - Safe Information Handling Foundation (face to face session)',
              'GGC E&F StatMand - Security & Threat (face to face session)',
@@ -57,7 +57,7 @@ def users_file():  # UNUSED CURRENTLY
 
 def empower(date):
     """ This function takes in a date and reduces the empower extract to only those within the 3 year expiry period"""
-    df = pd.read_excel('C:/Learnpro_extracts/LP_testData_31-05-20/empower_final.xlsx')
+    df = pd.read_excel('/media/wdrive/Danny/C drive stuff from home/LP_testData_31-05-20/empower_final.xlsx')
     print(df['Assessment Date'].iloc[0])
     df = df[df['Assessment Date'] > pd.to_datetime(date) - pd.DateOffset(years=3)]
     return df
@@ -76,7 +76,8 @@ def take_in_dir(list_of_modules):
     # dirname = askdirectory(initialdir='//ntserver5/generalDB/WorkforceDB/Learnpro/data',
     #                        title="Choose a directory full of learnpro files."
     #                        )
-    dirname = 'C:/Learnpro_Extracts/LP_testData_31-05-20'
+
+    dirname = '/media/wdrive/Danny/C drive stuff from home/LP_testData_31-05-20'
 
     # initialise master dataframe
     master = pd.DataFrame()
@@ -119,7 +120,7 @@ def take_in_dir(list_of_modules):
     master['Module'] = master['Module'].astype('category')
 
     master['Assessment Date'] = pd.to_datetime(master['Assessment Date'], format='%d/%m/%y %H:%M')
-    eess = eESS('C:/Learnpro_Extracts/LP_testData_31-05-20/eESS learning.xlsx')
+    eess = eESS('/media/wdrive/Danny/C drive stuff from home/LP_testData_31-05-20/eESS learning.xlsx')
     master = master.append(eess, ignore_index=True)
 
     # deal with empower
@@ -133,13 +134,13 @@ def take_in_dir(list_of_modules):
     modules = [item for sublist in modules for item in sublist]
     modules = list(dict.fromkeys(modules))
 
-    with open('C:/Learnpro_Extracts/listfile.txt', 'w') as filehandler:
+    with open('/media/wdrive/Danny/C drive stuff from home/listfile.txt', 'w') as filehandler:
         for listitem in modules:
             filehandler.write('%s\n' % listitem)
 
     print(master.columns)
     print(master.dtypes)
-    master.to_csv('C:/Learnpro_Extracts/bigfile.csv', index=False)
+    master.to_csv('/home/danny/workspace/Learnpro_Extracts/bigfile.csv', index=False)
     # exit()
     return master, df_users
 
@@ -156,7 +157,7 @@ def eESS(file):
                     'GGC E&F StatMand - Security & Threat (face to face session)',
                     'GGC E&F StatMand - Standard Infection Control Precautions (face to face session)']
     df = df[df['Course Name'].isin(eess_courses)]
-    with open("C:/Learnpro_Extracts/eesslookup.txt", "r") as file:
+    with open("/media/wdrive/Danny/C drive stuff from home/eesslookup.txt", "r") as file:
         data = file.read()
     eesslookup = eval(data)
     df['Pay Number'] = df['Employee Number'].map(eesslookup)
@@ -166,7 +167,7 @@ def eESS(file):
             'GGC E&F StatMand - General Awareness Fire Safety Training (face to face session)': 'GGC: 001 Fire Safety',
             'GGC E&F StatMand - Health & Safety an Induction (face to face session)': 'GGC: Health and Safety, an Introduction',
             'GGC E&F StatMand - Manual Handling Theory (face to face session)': 'GGC: Manual Handling Theory',
-            # 'GGC E&F StatMand - Public Protection (face to face session)',
+            'GGC E&F StatMand - Public Protection (face to face session)':'Public Protection - eESS',
             'GGC E&F StatMand - Reducing Risks of Violence & Aggression(face to face session)': 'GGC: 003 Reducing Risks of Violence & Aggression',
             'GGC E&F StatMand - Safe Information Handling Foundation (face to face session)': 'GGC: 009 Safe Information Handling',
             'GGC E&F StatMand - Security & Threat (face to face session)': 'GGC: 008 Security & Threat',
@@ -264,7 +265,7 @@ def sd_merge(df):
     df['Headcount'] = 1
 
     # TODO point this somewhere else
-    sd = pd.read_excel('W:/Staff Downloads/2020-04 - Staff Download.xlsx')
+    sd = pd.read_excel('/media/wdrive/Staff Downloads/2020-04 - Staff Download.xlsx')
 
     # Cleaning step - vital for merge to work properly - ID number must be on both sides of merge
     sd = sd.rename(columns={'Pay_Number': 'ID Number', 'Forename': 'First', 'Surname': 'Last'})
@@ -302,12 +303,12 @@ def produce_files(df):
     piv.loc['% Compliance'] = round(piv.iloc[-1] / 39802 * 100, 1)
 
     # write to book
-    with pd.ExcelWriter('C:/Learnpro_Extracts/namedList.xlsx') as writer:
+    with pd.ExcelWriter('/home/danny/workspace/Learnpro_Extracts/namedList.xlsx') as writer:
         df2.to_excel(writer, sheet_name='data', index=False)
         piv.to_excel(writer, sheet_name='pivot')
 
     # for debugging - make csv file with all columns and data
-    df.to_csv("C:/Learnpro_Extracts/namedList.csv")
+    df.to_csv("/home/danny/workspace/Learnpro_Extracts/namedList.csv")
 
 
 def check_compliance(df):
@@ -360,10 +361,20 @@ def check_compliance(df):
     df['Public Protection'] = np.where(df['Adult Support & Protection Date'].notnull() &
                                        df['Child Protection - Level 1 Date'].notnull(), "Complete", "Not Compliant")
 
+    # deal with the eESS public prot (covers both adult and child)
+    pubprot_mask = (df['Public Protection - eESS Date'].notnull())
+    df.loc[pubprot_mask, 'Public Protection'] = 'Complete'
+
     fire_mods_dates = [i + ' Date' for i in fire_mods[1:]]
+
     df['Public Protection expires on...'] = (df[['Adult Support & Protection Date',
                                                  'Child Protection - Level 1 Date']].min(axis=1)) + pd.DateOffset(
         years=3)
+
+    # give eEss public prot people an expiry date
+    df.loc[pubprot_mask, 'Public Protection expires on...'] = df['Public Protection - eESS Date'] + pd.DateOffset(
+        years=3)
+
 
     df['Public Protection expires on...'].loc[df['Public Protection'] == 'Not Compliant'] = None
 
