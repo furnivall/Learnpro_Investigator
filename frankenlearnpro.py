@@ -9,6 +9,9 @@ import os
 import datetime as dt
 import numpy as np
 
+learnpro_runtime = input("when was this data pulled from learnpro? (format = dd-mm-yy)")
+startdate_fire = pd.to_datetime(learnpro_runtime, format='%d-%m-%y')
+starttime = pd.Timestamp.now()
 # these are the modules we're looking at specifically to capture compliance
 stat_mand = ['GGC: 001 Fire Safety',
              'GGC: Health and Safety, an Introduction',
@@ -40,7 +43,7 @@ stat_mand = ['GGC: 001 Fire Safety',
 def sd_pull():  # UNUSED CURRENTLY
     """Read in staff download, then chop it down to ID and NI number."""
     # TODO replace this direct link with a prompt later - using this for speed currently
-    df = pd.read_excel('W:/Staff Downloads/2020-04 - Staff Download.xlsx')
+    df = pd.read_excel('W:/Staff Downloads/2020-07 - Staff Download.xlsx')
     df = df[['Pay_Number', 'NI_Number']]
     # rename column for easy merging
     df.columns = ['ID Number', 'NI Number']
@@ -57,7 +60,7 @@ def users_file():  # UNUSED CURRENTLY
 
 def empower(date):
     """ This function takes in a date and reduces the empower extract to only those within the 3 year expiry period"""
-    df = pd.read_excel('/media/wdrive/Danny/C drive stuff from home/LP_testData_31-05-20/empower_final.xlsx')
+    df = pd.read_excel('C:/Learnpro_Extracts/LP_testData_31-05-20/empower_final.xlsx')
     print(df['Assessment Date'].iloc[0])
     df = df[df['Assessment Date'] > pd.to_datetime(date) - pd.DateOffset(years=3)]
     return df
@@ -77,7 +80,7 @@ def take_in_dir(list_of_modules):
     #                        title="Choose a directory full of learnpro files."
     #                        )
 
-    dirname = '/media/wdrive/Danny/C drive stuff from home/LP_testData_31-05-20'
+    dirname = 'C:/Learnpro_Extracts/20200813-auto'
 
     # initialise master dataframe
     master = pd.DataFrame()
@@ -120,11 +123,11 @@ def take_in_dir(list_of_modules):
     master['Module'] = master['Module'].astype('category')
 
     master['Assessment Date'] = pd.to_datetime(master['Assessment Date'], format='%d/%m/%y %H:%M')
-    eess = eESS('/media/wdrive/Danny/C drive stuff from home/LP_testData_31-05-20/eESS learning.xlsx')
+    eess = eESS('C:/Learnpro_Extracts/20200813-auto/eESS.xlsx')
     master = master.append(eess, ignore_index=True)
 
     # deal with empower
-    empower_data = empower('31-05-2020')
+    empower_data = empower(startdate_fire)
     master = master.append(empower_data)
 
     # create master list of id numbers
@@ -134,13 +137,13 @@ def take_in_dir(list_of_modules):
     modules = [item for sublist in modules for item in sublist]
     modules = list(dict.fromkeys(modules))
 
-    with open('/media/wdrive/Danny/C drive stuff from home/listfile.txt', 'w') as filehandler:
+    with open('C:/Learnpro_Extracts/listfile.txt', 'w') as filehandler:
         for listitem in modules:
             filehandler.write('%s\n' % listitem)
 
     print(master.columns)
     print(master.dtypes)
-    master.to_csv('/home/danny/workspace/Learnpro_Extracts/bigfile.csv', index=False)
+    master.to_csv('C:/Learnpro_Extracts/bigfile.csv', index=False)
     # exit()
     return master, df_users
 
@@ -157,7 +160,7 @@ def eESS(file):
                     'GGC E&F StatMand - Security & Threat (face to face session)',
                     'GGC E&F StatMand - Standard Infection Control Precautions (face to face session)']
     df = df[df['Course Name'].isin(eess_courses)]
-    with open("/media/wdrive/Danny/C drive stuff from home/eesslookup.txt", "r") as file:
+    with open("C:/Learnpro_Extracts/eesslookup.txt", "r") as file:
         data = file.read()
     eesslookup = eval(data)
     df['Pay Number'] = df['Employee Number'].map(eesslookup)
@@ -265,7 +268,7 @@ def sd_merge(df):
     df['Headcount'] = 1
 
     # TODO point this somewhere else
-    sd = pd.read_excel('/media/wdrive/Staff Downloads/2020-04 - Staff Download.xlsx')
+    sd = pd.read_excel('W:/Staff Downloads/2020-07 - Staff Download.xlsx')
 
     # Cleaning step - vital for merge to work properly - ID number must be on both sides of merge
     sd = sd.rename(columns={'Pay_Number': 'ID Number', 'Forename': 'First', 'Surname': 'Last'})
@@ -300,15 +303,15 @@ def produce_files(df):
                          values=['SM1', 'SM2', 'SM3', 'SM4', 'SM5', 'SM6', 'SM7', 'SM8', 'SM9'],
                          aggfunc=np.sum, margins=True)
     # produce compliance percentage row
-    piv.loc['% Compliance'] = round(piv.iloc[-1] / 39802 * 100, 1)
+    piv.loc['% Compliance'] = round(piv.iloc[-1] / len(df) * 100, 1)
 
     # write to book
-    with pd.ExcelWriter('/home/danny/workspace/Learnpro_Extracts/namedList.xlsx') as writer:
+    with pd.ExcelWriter('C:/Learnpro_Extracts/namedList.xlsx') as writer:
         df2.to_excel(writer, sheet_name='data', index=False)
         piv.to_excel(writer, sheet_name='pivot')
 
     # for debugging - make csv file with all columns and data
-    df.to_csv("/home/danny/workspace/Learnpro_Extracts/namedList.csv")
+    df.to_csv("C:/Learnpro_Extracts/namedList.csv")
 
 
 def check_compliance(df):
@@ -361,6 +364,7 @@ def check_compliance(df):
     df['Public Protection'] = np.where(df['Adult Support & Protection Date'].notnull() &
                                        df['Child Protection - Level 1 Date'].notnull(), "Complete", "Not Compliant")
 
+
     # deal with the eESS public prot (covers both adult and child)
     pubprot_mask = (df['Public Protection - eESS Date'].notnull())
     df.loc[pubprot_mask, 'Public Protection'] = 'Complete'
@@ -382,8 +386,9 @@ def check_compliance(df):
     df['Fire Awareness expires on...'] = np.where(df['GGC: 001 Fire Safety Date'].notnull(),
                                                   df['GGC: 001 Fire Safety Date'], df[fire_mods_dates].min(axis=1))
 
+
     # TODO change this to max import date
-    startdate_fire = pd.to_datetime('31-05-20', format='%d-%m-%y')
+
     enddate_fire = startdate_fire + pd.DateOffset(years=1)
     date_range = (df['Fire Awareness expires on...'] > startdate_fire) & \
                  (df['Fire Awareness expires on...'] <= enddate_fire)
@@ -406,3 +411,6 @@ master_data, user_number = take_in_dir(stat_mand)
 print(type(master_data['Assessment Date'][0]))
 dates_frame = build_user_compliance_dates(master_data)
 check_compliance(dates_frame)
+
+endtime = pd.Timestamp.now()
+print(f'Runtime = {endtime - starttime}')

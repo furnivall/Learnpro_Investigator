@@ -4,6 +4,8 @@ from requests_ntlm import HttpNtlmAuth
 import os
 from tkinter.filedialog import askdirectory
 
+start = pd.Timestamp.now()
+
 pd.set_option('display.width', 420)
 pd.set_option('display.max_columns', 10)
 
@@ -12,6 +14,7 @@ falls_courses = ['An Introduction to Falls', 'The Falls Bundle of Care', 'What t
 
 username = 'xggc\\' + input("GGC username?")
 password = input("GGC password")
+
 
 
 
@@ -279,4 +282,5 @@ all_learnpro, users = take_in_dir(falls_courses)
 dates_frame = build_user_compliance_dates(all_learnpro)
 check_compliance(dates_frame, users)
 
-
+end = pd.Timestamp.now()
+print(end - start)
