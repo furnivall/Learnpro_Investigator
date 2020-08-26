@@ -11,7 +11,7 @@ import numpy as np
 time = pd.Timestamp.now()
 
 
-staff_download = pd.read_excel('W:/Staff Downloads/2020-04 - Staff Download.xlsx')
+staff_download = pd.read_excel('W:/Staff Downloads/2020-05 - Staff Download.xlsx')
 staff_ids = staff_download['Pay_Number'].unique().tolist()
 
 stat_mand = ['GGC: 001 Fire Safety',
