@@ -11,15 +11,17 @@ import numpy as np
 import requests
 from requests_ntlm import HttpNtlmAuth
 import configparser
-
+starttime = pd.Timestamp.now()
+learnpro_runtime = input("when was this data pulled from learnpro? (format = dd-mm-yy)")
+learnpro_date = pd.to_datetime(learnpro_runtime, format='%d-%m-%y')
 sharps_courses = ['GGC: Management of Needlestick & Similar Injuries',
                   # 'GGC: Prevention & Management of Occ. Exposure Pt 2',
                   'NES: Prev. and Mgmt. of Occ. Exposure (Assessment)']
 
 username = 'xggc\\' + input("GGC username?")
 password = input("GGC password")
-print(username)
-print(password)
+
+
 
 
 def getHSEScopeFile():
@@ -30,7 +32,7 @@ def getHSEScopeFile():
     with open('W:/LearnPro/HSEScope-current.xlsx', 'wb') as f:
         f.write(response.content)
 
-    curr_scope = pd.read_excel("W:/LearnPro/StaffScope-current.xlsx")
+    curr_scope = pd.read_excel("W:/LearnPro/HSEScope-current.xlsx")
     ggc_oos = curr_scope[curr_scope['GGC Module'] == "Out Of Scope"]
     nes_oos = curr_scope[curr_scope['NES Module'] == 'Out Of Scope']
 
@@ -39,6 +41,38 @@ def getHSEScopeFile():
 
 def check_users():
     df = pd.read_excel()
+
+def empower(date):
+    """ This function takes in a date and reduces the empower extract to only those within the 2 year expiry period"""
+    df = pd.read_excel('C:/Learnpro_Extracts/Empower_data/final_sharps.xlsx')
+
+    df['Assessment Date'] = pd.to_datetime(df['Assessment Date'], format='%d-%b-%y 00:00:00')
+    df = df[df['Assessment Date'] > pd.to_datetime(date) - pd.DateOffset(years=2)]
+    return df
+
+def eESS(file, date):
+    df = pd.read_excel(file)
+
+    eess_courses = ['GGC E&F Sharps - Disposal of Sharps (Toolbox Talks)', 'GGC E&F Sharps - Inappropriate Disposal of Sharps',
+    'GGC E&F Sharps - Management of Injuries (Toolbox Talks)']
+    df = df[df['Course Name'].isin(eess_courses)]
+    with open("C:/Learnpro_Extracts/eesslookup.txt", "r") as file:
+        data = file.read()
+    eesslookup = eval(data)
+    df['Pay Number'] = df['Employee Number'].map(eesslookup)
+    df['Course'] = 'GGC: Management of Needlestick & Similar Injuries'
+    df = df.rename(
+        columns={'Pay Number': 'ID Number', 'Course': 'Module', 'Course End Date': 'Assessment Date'})
+
+    df = df[['ID Number', 'Module', 'Assessment Date']]
+    print(len(df['Assessment Date']))
+
+    df['Assessment Date'] = pd.to_datetime(df['Assessment Date'], format='%Y/%m/%d')
+    df = df[df['Assessment Date'] > pd.to_datetime(date) - pd.DateOffset(years=2)]
+    df['GGC Source'] = 'eESS'
+    df['Assessment Date'] = df['Assessment Date'].dt.strftime('%d/%m/%y %H:%M')
+    return df
+
 
 
 def NESScope(df):
@@ -143,7 +177,6 @@ def take_in_dir(list_of_modules):
         # operate on the LEARNPRO files first
         if 'LEARNPRO' in file:
 
-            print(file)
             lp_count += 1
             # read file into df
             df = pd.read_csv(dirname + "/" + file, skiprows=14, sep="\t")
@@ -153,6 +186,7 @@ def take_in_dir(list_of_modules):
             df = df[df['Passed'] == "Yes"]
             print("Removed fails - new length: " + str(len(df)))
             df = df[['ID Number', 'Module', 'Assessment Date']]
+            df['GGC Source'] = 'Learnpro'
             # TODO this would be a good place to add any other cleaning steps
             # drop modules not in list
             df = df[df['Module'].isin(list_of_modules)]
@@ -166,11 +200,14 @@ def take_in_dir(list_of_modules):
             df = pd.read_csv(dirname + "/" + file, skiprows=11, sep="\t")
             user_ids = df['ID Number'].unique().tolist()
 
+        elif 'eESS' in file:
+            eESS_data = eESS(dirname + '/' + file, learnpro_date)
+            master = master.append(eESS_data, ignore_index=True)
 
         else:
             print("not lp")
             non_lp_count += 1
-    master['GGC Source'] = 'Learnpro'
+
     # log outputs below:
     print(str(lp_count + non_lp_count) + " files read. " + str(lp_count) + " contained learnpro data, " + str(
         non_lp_count) +
@@ -187,13 +224,18 @@ def take_in_dir(list_of_modules):
     # beautiful and elegant nested list comprehension
     modules = [item for sublist in modules for item in sublist]
     modules = list(dict.fromkeys(modules))
+    # deal with empower
+    empower_data = empower(learnpro_date)
+    master = master.append(empower_data, ignore_index=True)
+
 
     with open('C:/Learnpro_Extracts/listfile.txt', 'w') as filehandler:
         for listitem in modules:
             filehandler.write('%s\n' % listitem)
 
-    print(master.columns)
-    print(master.dtypes)
+
+
+    master.sort_values(by='Assessment Date', inplace=True)
     master.to_csv('C:/Learnpro_Extracts/bigfile.csv', index=False)
     # exit()
     return master, user_ids
@@ -201,26 +243,29 @@ def take_in_dir(list_of_modules):
 
 def build_user_compliance_dates(df):
     """Takes in a dataframe with lots of learnpro pass data and produces a dataset of test dates as an output"""
-    users = df['ID Number'].drop_duplicates().sort_values().to_frame()
+    users = df[['ID Number']].drop_duplicates(subset='ID Number').sort_values(by='ID Number')
     initial_length = len(users)
     for module in sharps_courses:
         print(module)
         df1 = df[df['Module'] == module]
         df1 = df1.drop(columns="Module")
         df1 = df1.rename(columns={"Assessment Date": module + " Date"})
-        print("This module has " + str(len(df1)) + "users")
+        print(f"This module has {len(df1)} users")
         users = users.merge(df1, on="ID Number", how="left")
         users = users[users['ID Number'].notnull()]
         # this is necessary because otherwise it'll create dupes for some reason
         users.drop_duplicates(subset='ID Number', inplace=True, keep='last')
-        print("Current dataset size: " + str(len(users)) + " users")
-        print("Dataframe shape: " + str(users.shape))
-    # for debug
-    # users.to_excel("C:/Learnpro_Extracts/dates.xlsx", index=False)
+
+
+    ggc_source = df[['ID Number', 'GGC Source']].drop_duplicates(subset='ID Number', keep='last')
+    users = users.merge(ggc_source, on='ID Number', how='left')
 
     print("Initial length: " + str(initial_length))
     print("Final length: " + str(len(users['ID Number'].drop_duplicates())))
-    print(users.columns)
+
+
+    # for debug
+    users.to_excel("C:/Learnpro_Extracts/sharps/dates.xlsx", index=False)
 
     return users
 
@@ -253,12 +298,11 @@ def produce_files(df):
     """Builds final files for named list"""
     # List of columns in final file from Ben's sheet:
 
-    print(df.columns)
 
     df = df.rename(columns={'First':'Forename', 'Last':'Surname', 'GGC':'GGC Module', 'NES':'NES Module',
                             'ID Number':'Pay_Number'})
-    df['Compliant'] = 'DO THIS LATER'
-    df['GGC Source'] = 'Learnpro'
+
+
     df = df[['Area', 'Sector/Directorate/HSCP', 'Sub-Directorate 1',
              'Sub-Directorate 2', 'department', 'Cost_Centre', 'Pay_Number',
              'Surname', 'Forename', 'Base', 'Job_Family', 'Sub_Job_Family',
@@ -305,7 +349,7 @@ def check_compliance(df, users):
     """Takes in a df with test dates for each of the stat/mand modules, including both versions of safe info handling.
         It will produce a completed named list dataset ala the old CompliancePro"""
 
-    print(df.columns)
+
 
     # iterate through modules, grabbing their test dates as appropriate
     for module in sharps_courses:
@@ -325,7 +369,7 @@ def check_compliance(df, users):
 
         df[str(short_name) + ' expires on...'] = df[module + ' Date'] + pd.DateOffset(years=2)
         df[short_name + ' expires on...'].loc[df[short_name] == 'Not Compliant'] = None
-        print(users)
+
 
     # merge staff download cols into dataset
     df = sd_merge(df)
@@ -336,10 +380,21 @@ def check_compliance(df, users):
 
     # df['NES - Scope'] = ""
     # df['GGC - Scope'] = ""
-    df['NES'].loc[(df['NES'].isnull()) & (~df['ID Number'].isin(nes['Pay_Number'].unique().tolist()))] = 'Out Of Scope'
-    df['GGC'].loc[(df['GGC'].isnull()) & (~df['ID Number'].isin(ggc['Pay_Number'].unique().tolist()))] = 'Out Of Scope'
+    # #UNCOMMENT IF YOU WANT TO USE RULES
+    # df['NES'].loc[(df['NES'].isnull()) & (~df['ID Number'].isin(nes['Pay_Number'].unique().tolist()))] = 'Out Of Scope'
+    # df['GGC'].loc[(df['GGC'].isnull()) & (~df['ID Number'].isin(ggc['Pay_Number'].unique().tolist()))] = 'Out Of Scope'
+
+    #UNCOMMENT IF YOU WANT TO USE GGC SCOPE
+    df['NES'].loc[(df['ID Number'].isin(nes_oos) | df['ID Number'].isin(nes_oos_excl))] = 'Out Of Scope'
+    df['GGC'].loc[(df['ID Number'].isin(ggc_oos) | df['ID Number'].isin(ggc_oos_excl))] = 'Out Of Scope'
+
     df['NES'].loc[(~df['ID Number'].isin(users)) & (df['NES'].isnull())] = 'No Account'
     df['GGC'].loc[(~df['ID Number'].isin(users)) & (df['GGC'].isnull())] = 'No Account'
+    df['GGC'].loc[(df['GGC'].isnull()) | (df['GGC'] == "")] = 'Not undertaken'
+    df['NES'].loc[(df['NES'].isnull()) | (df['NES'] == "")] = 'Not undertaken'
+    df['Compliant'] = ''
+    df['Compliant'].loc[(df['GGC'] == 'Complete') & ((df['NES'].isin(['Out of Scope', 'Complete'])))] = 1
+    df['Compliant'].loc[(df['Compliant'] == '')] = 0
     # wrap up and produce final files
     produce_files(df)
 
@@ -362,21 +417,25 @@ for i in sd_list:
         nes_oos_excl.append(i)
 print(f'Out of scope from GGC exclusions: {len(ggc_oos_excl)}, Out of scope from Scopes File: {len(ggc_oos)}')
 print(f'Out of scope from NES exclusions: {len(nes_oos_excl)}, Out of scope from Scopes file: {len(nes_oos)}')
+print(f'nes from exclusions {nes_oos_excl[0:10]}')
+print(f'nes from file{nes_oos[0:10]}')
+
+
 
 print(f'GGC from exclusions: {len(ggc)}, GGC from Scopes file: {40800 - len(ggc_oos)}')
 print(f'NES from exclusions: {len(nes)}, NES from Scopes file: {40800 - len(nes_oos)}')
 
 ggc_diff = set(ggc_oos).difference(ggc_oos_excl)
-print(len(ggc_diff))
+print(f'GGC Diff = {len(ggc_diff)}')
 nes_diff = set(nes_oos).difference(nes_oos_excl)
-print(len(nes_diff))
-print(nes_diff)
+print(f'NES Diff = {len(nes_diff)}')
+
 ggc_exclusions = pd.DataFrame(list(ggc_diff), columns=['Pay_Number'])
 nes_exclusions = pd.DataFrame(list(nes_diff), columns=['Pay_Number'])
 
 ggc_exclusions = ggc_exclusions.merge(sd, on='Pay_Number', how='left')
 nes_exclusions = nes_exclusions.merge(sd, on='Pay_Number', how='left')
-print(ggc_exclusions.columns)
+
 ggc_exclusions = ggc_exclusions[['Pay_Number', 'Area', 'Sector/Directorate/HSCP_Code',
                                  'Sector/Directorate/HSCP', 'Sub-Directorate 1', 'Sub-Directorate 2',
                                  'department', 'Cost_Centre', 'Surname', 'Forename', 'Base',
@@ -397,6 +456,8 @@ master_data, user_list = take_in_dir(sharps_courses)
 dates_frame = build_user_compliance_dates(master_data)
 dates_frame.to_csv('C:/Learnpro_Extracts/sharps/date_debug.csv', index=False)
 check_compliance(dates_frame, user_list)
-print(dates_frame.dtypes)
+
 
 # print(sd['NES Module'].value_counts())
+endtime = pd.Timestamp.now()
+print(f'Total time elapsed : {endtime - starttime}')
