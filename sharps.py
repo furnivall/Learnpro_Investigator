@@ -11,6 +11,7 @@ import numpy as np
 import requests
 from requests_ntlm import HttpNtlmAuth
 import configparser
+
 starttime = pd.Timestamp.now()
 learnpro_runtime = input("when was this data pulled from learnpro? (format = dd-mm-yy)")
 learnpro_date = pd.to_datetime(learnpro_runtime, format='%d-%m-%y')
@@ -22,6 +23,26 @@ username = 'xggc\\' + input("GGC username?")
 password = input("GGC password")
 
 
+def NotatWork(date):
+    date = date.strftime('%Y-%m-%d')
+    df = pd.read_excel('W:/Daily_Absence/' + date + '.xls', skiprows=4)
+    print(df.columns)
+    print(f'Total absences: {len(df)}')
+    mat = df[df['AbsenceReason Description'] == 'Maternity Leave']['Pay No'].tolist()
+    df = df[~df['Pay No'].isin(mat)]
+    susp = df[df['Absence Type'] == 'Suspended']['Pay No'].tolist()
+    df = df[~df['Pay No'].isin(susp)]
+    secondment = df[df['AbsenceReason Description'] == 'Secondment']['Pay No'].tolist()
+    df = df[~df['Pay No'].isin(secondment)]
+
+    df['Absence Episode Start Date'] = pd.to_datetime(df['Absence Episode Start Date'], format='%Y-%m-%d')
+
+    day28 = pd.Timestamp.now() - pd.DateOffset(days=28)
+    long_abs = df[df['Absence Episode Start Date'] < day28]['Pay No'].tolist()
+    return mat, susp, secondment, long_abs
+
+
+mat, susp, secondment, long_abs = NotatWork(learnpro_date - pd.DateOffset(days=1))
 
 
 def getHSEScopeFile():
@@ -42,6 +63,7 @@ def getHSEScopeFile():
 def check_users():
     df = pd.read_excel()
 
+
 def empower(date):
     """ This function takes in a date and reduces the empower extract to only those within the 2 year expiry period"""
     df = pd.read_excel('C:/Learnpro_Extracts/Empower_data/final_sharps.xlsx')
@@ -50,11 +72,13 @@ def empower(date):
     df = df[df['Assessment Date'] > pd.to_datetime(date) - pd.DateOffset(years=2)]
     return df
 
-def eESS(file, date):
-    df = pd.read_excel(file)
 
-    eess_courses = ['GGC E&F Sharps - Disposal of Sharps (Toolbox Talks)', 'GGC E&F Sharps - Inappropriate Disposal of Sharps',
-    'GGC E&F Sharps - Management of Injuries (Toolbox Talks)']
+def eESS(file, date):
+    df = pd.read_csv(file, sep='\t', encoding='utf-16')
+
+    eess_courses = ['GGC E&F Sharps - Disposal of Sharps (Toolbox Talks)',
+                    'GGC E&F Sharps - Inappropriate Disposal of Sharps',
+                    'GGC E&F Sharps - Management of Injuries (Toolbox Talks)']
     df = df[df['Course Name'].isin(eess_courses)]
     with open("C:/Learnpro_Extracts/eesslookup.txt", "r") as file:
         data = file.read()
@@ -72,7 +96,6 @@ def eESS(file, date):
     df['GGC Source'] = 'eESS'
     df['Assessment Date'] = df['Assessment Date'].dt.strftime('%d/%m/%y %H:%M')
     return df
-
 
 
 def NESScope(df):
@@ -103,6 +126,9 @@ def NESScope(df):
     # Biochem Lab
     df = df[~(df['department'] == 'Gri -Biochemistry Lab')]
 
+    # Megan Fileman - request from Linda McCall - remedied on 01-09-2020
+    df = df[~(df['Pay_Number'] == 'G9838100')]
+
     print(f'NES Inscope: {len(df)}')
     df.to_excel('C:/Learnpro_Extracts/sharps/nestest.xlsx')
     return df
@@ -112,6 +138,13 @@ def GGCScope(df):
     print('Generating GGC Scope')
 
     df_orig = df
+
+    # In response to query from Arwel Williams (28/08/20), removed certain training grades neuro docs
+    arwel_neuro = ['G9854092', 'G9843249', 'G9853174', 'G9854035', 'G9853491', 'G9853144', 'G9853581', 'G9853542']
+    df = df[~df['Pay_Number'].isin(arwel_neuro)]
+
+    # In response to Natalie Mcmillan / Margaret Anderson retirement notice - 01/09/2020
+    df = df[~(df['Pay_Number'] == 'G0009520')]
 
     # Sector Level Exclusions
     df = df[~df['Sector/Directorate/HSCP'].isin(['Acute Corporate', 'Board Medical Director', 'Board Administration',
@@ -228,12 +261,9 @@ def take_in_dir(list_of_modules):
     empower_data = empower(learnpro_date)
     master = master.append(empower_data, ignore_index=True)
 
-
     with open('C:/Learnpro_Extracts/listfile.txt', 'w') as filehandler:
         for listitem in modules:
             filehandler.write('%s\n' % listitem)
-
-
 
     master.sort_values(by='Assessment Date', inplace=True)
     master.to_csv('C:/Learnpro_Extracts/bigfile.csv', index=False)
@@ -256,13 +286,11 @@ def build_user_compliance_dates(df):
         # this is necessary because otherwise it'll create dupes for some reason
         users.drop_duplicates(subset='ID Number', inplace=True, keep='last')
 
-
     ggc_source = df[['ID Number', 'GGC Source']].drop_duplicates(subset='ID Number', keep='last')
     users = users.merge(ggc_source, on='ID Number', how='left')
 
     print("Initial length: " + str(initial_length))
     print("Final length: " + str(len(users['ID Number'].drop_duplicates())))
-
 
     # for debug
     users.to_excel("C:/Learnpro_Extracts/sharps/dates.xlsx", index=False)
@@ -277,7 +305,7 @@ def sd_merge(df):
     df['Headcount'] = 1
 
     # TODO point this somewhere else
-    sd = pd.read_excel('W:/Staff Downloads/2020-07 - Staff Download.xlsx')
+    sd = pd.read_excel('W:/Staff Downloads/2020-08 - Staff Download.xlsx')
 
     # Cleaning step - vital for merge to work properly - ID number must be on both sides of merge
     sd = sd.rename(columns={'Pay_Number': 'ID Number', 'Forename': 'First', 'Surname': 'Last'})
@@ -298,10 +326,8 @@ def produce_files(df):
     """Builds final files for named list"""
     # List of columns in final file from Ben's sheet:
 
-
-    df = df.rename(columns={'First':'Forename', 'Last':'Surname', 'GGC':'GGC Module', 'NES':'NES Module',
-                            'ID Number':'Pay_Number'})
-
+    df = df.rename(columns={'First': 'Forename', 'Last': 'Surname', 'GGC': 'GGC Module', 'NES': 'NES Module',
+                            'ID Number': 'Pay_Number'})
 
     df = df[['Area', 'Sector/Directorate/HSCP', 'Sub-Directorate 1',
              'Sub-Directorate 2', 'department', 'Cost_Centre', 'Pay_Number',
@@ -310,11 +336,35 @@ def produce_files(df):
              'Date_Started', 'Job_Description', 'Pay_Band', 'GGC Module', 'GGC Date',
              'GGC Source', 'NES Module', 'NES Date', 'Compliant']]
 
+    ggc_piv = pd.pivot_table(df, index=['Area', 'Sector/Directorate/HSCP'], columns='GGC Module', values='Pay_Number',
+                             aggfunc='count', margins=True,fill_value=0, margins_name='All Staff')
+    ggc_piv['In scope'] = ggc_piv['Complete'] + ggc_piv['Expired'] + ggc_piv['No Account'] + ggc_piv['Not undertaken']
+
+    ggc_piv['Not at work'] = ggc_piv['Maternity Leave'] + ggc_piv['Suspended'] + ggc_piv['Secondment'] + \
+                             ggc_piv['>=28 days Absence']
+    ggc_piv['Compliance %'] = (ggc_piv['Complete'] / ggc_piv['In scope'] * 100).round(2)
+    ggc_piv.drop(inplace=True, columns=['All Staff', 'Secondment', 'Suspended', 'Out Of Scope', 'Maternity Leave',
+                                        '>=28 days Absence'])
+    ggc_piv = ggc_piv[ggc_piv['Compliance %'] > 0.01]
+
+    nes_piv = pd.pivot_table(df, index=['Area', 'Sector/Directorate/HSCP'], columns='NES Module', values='Pay_Number',
+                             aggfunc='count', margins=True, margins_name='All Staff', fill_value=0)
+    nes_piv['In scope'] = (nes_piv['Complete'] + nes_piv['Expired'] + nes_piv['No Account'] + nes_piv['Not undertaken']).round(2)
+
+    nes_piv['Not at work'] = nes_piv['Maternity Leave'] + nes_piv['Suspended'] + nes_piv['Secondment'] +\
+                             nes_piv['>=28 days Absence']
+    nes_piv['Compliance %'] = (nes_piv['Complete'] / nes_piv['In scope'] * 100).round(2)
+    nes_piv.drop(inplace=True, columns=['All Staff', 'Secondment', 'Suspended', 'Out Of Scope', 'Maternity Leave',
+                                        '>=28 days Absence'])
+    nes_piv = nes_piv[nes_piv['Compliance %'] > 0.01]
+
     # write to book
-    with pd.ExcelWriter('C:/Learnpro_Extracts/sharps/namedList.xlsx') as writer:
-        df.to_excel(writer, sheet_name='data', index=False)
+    with pd.ExcelWriter('C:/Learnpro_Extracts/sharps/'+learnpro_date.strftime('%Y%m%d')+' - HSE Sharps.xlsx') as writer:
+        df.to_excel(writer, sheet_name='Export', index=False)
         # TODO add pivot
         # piv.to_excel(writer, sheet_name='pivot')
+        ggc_piv.to_excel(writer, sheet_name='GGC Pivot')
+        nes_piv.to_excel(writer, sheet_name='NES Pivot')
     writer.save()
 
     # for debugging - make csv file with all columns and data
@@ -349,8 +399,6 @@ def check_compliance(df, users):
     """Takes in a df with test dates for each of the stat/mand modules, including both versions of safe info handling.
         It will produce a completed named list dataset ala the old CompliancePro"""
 
-
-
     # iterate through modules, grabbing their test dates as appropriate
     for module in sharps_courses:
         columnnames = {'GGC: Management of Needlestick & Similar Injuries': 'GGC',
@@ -362,14 +410,13 @@ def check_compliance(df, users):
         df[short_name] = ""
         df[short_name + ' Date'] = df[module + ' Date']
         # attach compliance to all except infogov and fire. It is likely this will need to be changed to capture more
-        earliestCompliance = pd.Timestamp.now() - pd.DateOffset(years=2)
+        earliestCompliance = learnpro_date - pd.DateOffset(years=2)
         # df[short_name] = np.where(df[module + ' Date'] > earliestCompliance, "Complete", "Not Compliant")
         df[short_name].loc[df[module + ' Date'] > earliestCompliance] = 'Complete'
         df[short_name].loc[(df[module + ' Date'].notnull()) & (df[module + ' Date'] < earliestCompliance)] = 'Expired'
 
         df[str(short_name) + ' expires on...'] = df[module + ' Date'] + pd.DateOffset(years=2)
         df[short_name + ' expires on...'].loc[df[short_name] == 'Not Compliant'] = None
-
 
     # merge staff download cols into dataset
     df = sd_merge(df)
@@ -384,7 +431,7 @@ def check_compliance(df, users):
     # df['NES'].loc[(df['NES'].isnull()) & (~df['ID Number'].isin(nes['Pay_Number'].unique().tolist()))] = 'Out Of Scope'
     # df['GGC'].loc[(df['GGC'].isnull()) & (~df['ID Number'].isin(ggc['Pay_Number'].unique().tolist()))] = 'Out Of Scope'
 
-    #UNCOMMENT IF YOU WANT TO USE GGC SCOPE
+    # UNCOMMENT IF YOU WANT TO USE GGC SCOPE
     df['NES'].loc[(df['ID Number'].isin(nes_oos) | df['ID Number'].isin(nes_oos_excl))] = 'Out Of Scope'
     df['GGC'].loc[(df['ID Number'].isin(ggc_oos) | df['ID Number'].isin(ggc_oos_excl))] = 'Out Of Scope'
 
@@ -395,11 +442,30 @@ def check_compliance(df, users):
     df['Compliant'] = ''
     df['Compliant'].loc[(df['GGC'] == 'Complete') & ((df['NES'].isin(['Out of Scope', 'Complete'])))] = 1
     df['Compliant'].loc[(df['Compliant'] == '')] = 0
+
+    # deal with not at work staff
+    df.loc[((df['ID Number'].isin(long_abs)) & (
+        ~df['GGC'].isin(['Complete', 'Out Of Scope']))), 'GGC'] = '>=28 days Absence'
+    df.loc[((df['ID Number'].isin(mat)) & (
+        ~df['GGC'].isin(['Complete', 'Out Of Scope']))), 'GGC'] = 'Maternity Leave'
+    df.loc[((df['ID Number'].isin(secondment)) & (
+        ~df['GGC'].isin(['Complete', 'Out Of Scope']))), 'GGC'] = 'Secondment'
+    df.loc[((df['ID Number'].isin(susp)) & (
+        ~df['GGC'].isin(['Complete', 'Out Of Scope']))), 'GGC'] = 'Suspended'
+    df.loc[((df['ID Number'].isin(long_abs)) & (
+        ~df['NES'].isin(['Complete', 'Out Of Scope']))), 'NES'] = '>=28 days Absence'
+    df.loc[((df['ID Number'].isin(mat)) & (
+        ~df['NES'].isin(['Complete', 'Out Of Scope']))), 'NES'] = 'Maternity Leave'
+    df.loc[((df['ID Number'].isin(secondment)) & (
+        ~df['NES'].isin(['Complete', 'Out Of Scope']))), 'NES'] = 'Secondment'
+    df.loc[((df['ID Number'].isin(susp)) & (
+        ~df['NES'].isin(['Complete', 'Out Of Scope']))), 'NES'] = 'Suspended'
+
     # wrap up and produce final files
     produce_files(df)
 
 
-sd = pd.read_excel('W:/Staff Downloads/2020-07 - Staff Download.xlsx')
+sd = pd.read_excel('W:/Staff Downloads/2020-08 - Staff Download.xlsx')
 sd_list = sd['Pay_Number'].tolist()
 
 ggc_oos, nes_oos = getHSEScopeFile()
@@ -419,8 +485,6 @@ print(f'Out of scope from GGC exclusions: {len(ggc_oos_excl)}, Out of scope from
 print(f'Out of scope from NES exclusions: {len(nes_oos_excl)}, Out of scope from Scopes file: {len(nes_oos)}')
 print(f'nes from exclusions {nes_oos_excl[0:10]}')
 print(f'nes from file{nes_oos[0:10]}')
-
-
 
 print(f'GGC from exclusions: {len(ggc)}, GGC from Scopes file: {40800 - len(ggc_oos)}')
 print(f'NES from exclusions: {len(nes)}, NES from Scopes file: {40800 - len(nes_oos)}')
@@ -456,7 +520,6 @@ master_data, user_list = take_in_dir(sharps_courses)
 dates_frame = build_user_compliance_dates(master_data)
 dates_frame.to_csv('C:/Learnpro_Extracts/sharps/date_debug.csv', index=False)
 check_compliance(dates_frame, user_list)
-
 
 # print(sd['NES Module'].value_counts())
 endtime = pd.Timestamp.now()

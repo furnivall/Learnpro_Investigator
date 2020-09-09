@@ -12,10 +12,33 @@ pd.set_option('display.max_columns', 10)
 falls_courses = ['An Introduction to Falls', 'The Falls Bundle of Care', 'What to do when your patient falls',
                  'Risk Factors for Falls (Part 1)', 'Risk Factors for Falls (Part 2)', 'Falls - Bedrails ']
 
+learnpro_runtime = input("when was this data pulled from learnpro? (format = dd-mm-yy)")
+learnpro_date = pd.to_datetime(learnpro_runtime, format='%d-%m-%y')
+
 username = 'xggc\\' + input("GGC username?")
 password = input("GGC password")
 
 
+def NotatWork(date):
+    date = date.strftime('%Y-%m-%d')
+    df = pd.read_excel('W:/Daily_Absence/' + date + '.xls', skiprows=4)
+    print(df.columns)
+    print(f'Total absences: {len(df)}')
+    mat = df[df['AbsenceReason Description'] == 'Maternity Leave']['Pay No'].tolist()
+    df = df[~df['Pay No'].isin(mat)]
+    susp = df[df['Absence Type'] == 'Suspended']['Pay No'].tolist()
+    df = df[~df['Pay No'].isin(susp)]
+    secondment = df[df['AbsenceReason Description'] == 'Secondment']['Pay No'].tolist()
+    df = df[~df['Pay No'].isin(secondment)]
+
+    df['Absence Episode Start Date'] = pd.to_datetime(df['Absence Episode Start Date'], format='%Y-%m-%d')
+
+    day28 = pd.Timestamp.now() - pd.DateOffset(days=28)
+    long_abs = df[df['Absence Episode Start Date'] < day28]['Pay No'].tolist()
+    return mat, susp, secondment, long_abs
+
+
+mat, susp, secondment, long_abs = NotatWork(learnpro_date - pd.DateOffset(days=1))
 
 
 def getHSEScopeFile():
@@ -60,11 +83,21 @@ def workwithScopes(df):
     return output
 
 def merge_scopes(concat):
-    sd = pd.read_excel('W:/Staff Downloads/2020-07 - Staff Download.xlsx')
+    sd = pd.read_excel('W:/Staff Downloads/2020-08 - Staff Download.xlsx')
     print(sd.columns)
     sd['Concat'] = sd['Cost_Centre'] + sd['Job_Family']
     sd['Falls Compliant'] = ""
     sd['Falls Compliant'].loc[~sd['Concat'].isin(concat)] = 'Out of scope'
+
+    # In response to query from Pauline Simpson (28/08/2020), we have removed all Obstetrics staff from the scope list
+    sd['Falls Compliant'].loc[sd['Sub-Directorate 2'] == 'Obstetrics'] = 'Out of scope'
+
+    # In response to a query from Stephanie Mckay (08/09/2020), we have added "Qeuh-neuro + Omfs Opd" to the
+    # scope for Falls
+    sd['Falls Compliant'].loc[sd['department'] == 'Qeuh-neuro + Omfs Opd'] = ''
+
+
+
     print(sd['Falls Compliant'].value_counts())
     return sd
 
@@ -189,10 +222,25 @@ def produce_files(df):
              'An Introduction to Falls', 'The Falls Bundle of Care', 'What to do when your patient falls',
              'Risk Factors for Falls (Part 1)', 'Risk Factors for Falls (Part 2)', 'Falls - Bedrails ']]
 
+    falls_piv = pd.pivot_table(df[df['Job_Family'].isin(['Nursing and Midwifery', 'Allied Health Profession',
+                               'Medical and Dental'])], index=['Job_Family', 'Sector/Directorate/HSCP'],
+                               columns='Falls Compliant',
+                               values='Pay_Number', aggfunc='count', fill_value=0, margins=True, margins_name='All Staff')
+    falls_piv['Not at work'] = falls_piv['Secondment'] + falls_piv['Maternity Leave'] + \
+                               falls_piv['>=28 days Absence'] + falls_piv['Suspended']
+
+
+    falls_piv['In scope'] = falls_piv['Complete'] + falls_piv['No Account'] \
+                            + falls_piv['Not Undertaken'] + falls_piv['Not Complete']
+    falls_piv['Compliance %'] = (falls_piv['Complete'] / falls_piv['In scope'] * 100).round(2)
+    falls_piv = falls_piv[falls_piv['Compliance %'] > 5]
+    falls_piv.drop(columns=['Maternity Leave', 'Suspended', '>=28 days Absence', 'Secondment', 'Out of scope',
+                            'All Staff'], inplace=True)
     # write to book
     with pd.ExcelWriter('C:/Learnpro_Extracts/falls/namedList.xlsx') as writer:
         df.to_excel(writer, sheet_name='data', index=False)
-        # TODO add pivot
+        falls_piv.to_excel(writer, sheet_name='pivot')
+                # TODO add pivot
         # piv.to_excel(writer, sheet_name='pivot')
     writer.save()
 
@@ -244,6 +292,16 @@ def check_compliance(df, users):
     # fix for people with more than one pay number
 
     df = ni_fix(df)
+
+    df.loc[((df['ID Number'].isin(long_abs)) & (
+        ~df['Falls Compliant'].isin(['Complete', 'Out of scope']))), 'Falls Compliant'] = '>=28 days Absence'
+    df.loc[((df['ID Number'].isin(mat)) & (
+        ~df['Falls Compliant'].isin(['Complete', 'Out of scope']))), 'Falls Compliant'] = 'Maternity Leave'
+    df.loc[((df['ID Number'].isin(secondment)) & (
+        ~df['Falls Compliant'].isin(['Complete', 'Out of scope']))), 'Falls Compliant'] = 'Secondment'
+    df.loc[((df['ID Number'].isin(susp)) & (
+        ~df['Falls Compliant'].isin(['Complete', 'Out of scope']))), 'Falls Compliant'] = 'Suspended'
+
 
     # df['NES - Scope'] = ""
     # df['GGC - Scope'] = ""

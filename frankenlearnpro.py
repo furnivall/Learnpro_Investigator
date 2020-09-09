@@ -43,7 +43,7 @@ stat_mand = ['GGC: 001 Fire Safety',
 def sd_pull():  # UNUSED CURRENTLY
     """Read in staff download, then chop it down to ID and NI number."""
     # TODO replace this direct link with a prompt later - using this for speed currently
-    df = pd.read_excel('W:/Staff Downloads/2020-07 - Staff Download.xlsx')
+    df = pd.read_excel('W:/Staff Downloads/2020-08 - Staff Download.xlsx')
     df = df[['Pay_Number', 'NI_Number']]
     # rename column for easy merging
     df.columns = ['ID Number', 'NI Number']
@@ -80,7 +80,7 @@ def take_in_dir(list_of_modules):
     #                        title="Choose a directory full of learnpro files."
     #                        )
 
-    dirname = 'C:/Learnpro_Extracts/20200813-auto'
+    dirname = 'C:/Learnpro_Extracts/20200904-auto'
 
     # initialise master dataframe
     master = pd.DataFrame()
@@ -123,7 +123,7 @@ def take_in_dir(list_of_modules):
     master['Module'] = master['Module'].astype('category')
 
     master['Assessment Date'] = pd.to_datetime(master['Assessment Date'], format='%d/%m/%y %H:%M')
-    eess = eESS('C:/Learnpro_Extracts/20200813-auto/eESS.xlsx')
+    eess = eESS('C:/Learnpro_Extracts/20200904-auto/CompliancePro_Extract.csv')
     master = master.append(eess, ignore_index=True)
 
     # deal with empower
@@ -149,7 +149,7 @@ def take_in_dir(list_of_modules):
 
 
 def eESS(file):
-    df = pd.read_excel(file)
+    df = pd.read_csv(file, sep='\t', encoding='utf-16')
     eess_courses = ['GGC E&F StatMand - Equality, Diversity & Human Rights (face to face session)',
                     'GGC E&F StatMand - General Awareness Fire Safety Training (face to face session)',
                     'GGC E&F StatMand - Health & Safety an Induction (face to face session)',
@@ -265,10 +265,10 @@ def sd_merge(df):
     """This function merges in the Staff Download data to let us work with identifiable stuff for our pivot"""
 
     # legacy - good for excel pivots
-    df['Headcount'] = 1
+
 
     # TODO point this somewhere else
-    sd = pd.read_excel('W:/Staff Downloads/2020-07 - Staff Download.xlsx')
+    sd = pd.read_excel('W:/Staff Downloads/2020-08 - Staff Download.xlsx')
 
     # Cleaning step - vital for merge to work properly - ID number must be on both sides of merge
     sd = sd.rename(columns={'Pay_Number': 'ID Number', 'Forename': 'First', 'Surname': 'Last'})
@@ -285,7 +285,7 @@ def sd_merge(df):
 
 def produce_files(df):
     """Builds final files for named list"""
-
+    df['Headcount'] = 1
     # subset for final named list
     df2 = df[['ID Number', 'Area', 'Sector/Directorate/HSCP', 'Sub-Directorate 1', 'Sub-Directorate 2', 'department',
               'Cost_Centre', 'First', 'Last', 'Job_Family', 'Sub_Job_Family', 'Equality, Diversity and Human Rights',
