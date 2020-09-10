@@ -35,14 +35,14 @@ for sector in sectors:
     subdirs = dfx['Sub-Directorate 1'].unique()
     if len(subdirs) > 1:
         for subdir in subdirs:
-            dfy = dfx[dfx['Sub-Directorate 1'] == 'subdir']
+            dfy = dfx[dfx['Sub-Directorate 1'] == subdir]
             piv = pd.pivot_table(dfx, index='Sub-Directorate 2',
                                  values=['SM1', 'SM2', 'SM3', 'SM4', 'SM5', 'SM6', 'SM7', 'SM8', 'SM9'],
                                  aggfunc=np.sum, margins=True)
             piv.loc['% Compliance'] = round(piv.iloc[-1] / len(dfx) * 100, 1)
             piv.rename(columns=coldic)
             with pd.ExcelWriter('W:/Learnpro/Named Lists/2020-08/2020-08 ' + sector + ' - ' + subdir.replace('/',
-                                                                                                             "'") + '.xlsx') as writer:
+                                                                                                             "'").replace('&',"'") + '.xlsx') as writer:
                 dfy.to_excel(writer, sheet_name='data', index=False)
                 piv.to_excel(writer, sheet_name='pivot')
                 writer.save()
