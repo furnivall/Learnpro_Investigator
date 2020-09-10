@@ -465,9 +465,7 @@ def check_compliance(df, users):
     df['GGC'].loc[(~df['ID Number'].isin(users)) & (df['GGC'].isnull())] = 'No Account'
     df['GGC'].loc[(df['GGC'].isnull()) | (df['GGC'] == "")] = 'Not undertaken'
     df['NES'].loc[(df['NES'].isnull()) | (df['NES'] == "")] = 'Not undertaken'
-    df['Compliant'] = ''
-    df['Compliant'].loc[(df['GGC'] == 'Complete') & ((df['NES'].isin(['Out of Scope', 'Complete'])))] = 1
-    df['Compliant'].loc[(df['Compliant'] == '')] = 0
+
 
     # deal with not at work staff
     df.loc[((df['ID Number'].isin(long_abs)) & (
@@ -486,6 +484,10 @@ def check_compliance(df, users):
         ~df['NES'].isin(['Complete', 'Out Of Scope']))), 'NES'] = 'Secondment'
     df.loc[((df['ID Number'].isin(susp)) & (
         ~df['NES'].isin(['Complete', 'Out Of Scope']))), 'NES'] = 'Suspended'
+
+    df['Compliant'] = ''
+    df['Compliant'].loc[(df['GGC'] == 'Complete') & ((df['NES'].isin(['Out Of Scope', 'Complete'])))] = 1
+    df['Compliant'].loc[(df['Compliant'] == '')] = 0
 
     # wrap up and produce final files
     produce_files(df)
