@@ -96,6 +96,9 @@ def merge_scopes(concat):
     # scope for Falls
     sd['Falls Compliant'].loc[sd['department'] == 'Qeuh-neuro + Omfs Opd'] = ''
 
+    # in response to Cameron's look of shock, we have removed two cost centres with a single in-scope AHP as they
+    # incorrectly added
+    sd['Falls Compliant'].loc[(sd['Cost_Centre'].isin(['G51126', 'G69311']))] = 'Out of scope'
 
 
     print(sd['Falls Compliant'].value_counts())
@@ -223,26 +226,40 @@ def produce_files(df):
              'Risk Factors for Falls (Part 1)', 'Risk Factors for Falls (Part 2)', 'Falls - Bedrails ']]
 
     falls_piv = pd.pivot_table(df[df['Job_Family'].isin(['Nursing and Midwifery', 'Allied Health Profession',
-                               'Medical and Dental'])], index=['Job_Family', 'Sector/Directorate/HSCP'],
+                               'Medical and Dental'])], index=['Job_Family','Sector/Directorate/HSCP'],
                                columns='Falls Compliant',
                                values='Pay_Number', aggfunc='count', fill_value=0, margins=True, margins_name='All Staff')
-    falls_piv['Not at work'] = falls_piv['Secondment'] + falls_piv['Maternity Leave'] + \
-                               falls_piv['>=28 days Absence'] + falls_piv['Suspended']
+    falls_piv['Not at work ≥ 28 days'] = falls_piv['Secondment'] + falls_piv['Maternity Leave'] + \
+                               falls_piv['≥28 days Absence'] + falls_piv['Suspended']
 
 
     falls_piv['In scope'] = falls_piv['Complete'] + falls_piv['No Account'] \
-                            + falls_piv['Not Undertaken'] + falls_piv['Not Complete']
-    falls_piv['Compliance %'] = (falls_piv['Complete'] / falls_piv['In scope'] * 100).round(2)
+                            + falls_piv['Not Undertaken'] + falls_piv['Not Complete'] + falls_piv['Not at work ≥ 28 days']
+    falls_piv['Compliance %'] = ((falls_piv['Complete'] + falls_piv['Not at work ≥ 28 days']) / falls_piv['In scope'] * 100).round(2)
     falls_piv = falls_piv[falls_piv['Compliance %'] > 5]
-    falls_piv.drop(columns=['Maternity Leave', 'Suspended', '>=28 days Absence', 'Secondment', 'Out of scope',
+    falls_piv.drop(columns=['Maternity Leave', 'Suspended', '≥28 days Absence', 'Secondment', 'Out of scope',
                             'All Staff'], inplace=True)
+    falls_piv = falls_piv[['Complete', 'Not at work ≥ 28 days', 'Not Undertaken', 'Not Complete', 'No Account', 'In scope', 'Compliance %']]
+    # To protect privacy of those who are off work >28 days. For debugging of absence type, comment this line.
+    df.loc[((df['Falls Compliant'].isin(['Secondment', 'Out of Scope', 'Maternity Leave', 'Suspended']))),
+           'Falls Compliant'] = 'Not at work ≥ 28 days'
+
     # write to book
-    with pd.ExcelWriter('C:/Learnpro_Extracts/falls/namedList.xlsx') as writer:
-        df.to_excel(writer, sheet_name='data', index=False)
-        falls_piv.to_excel(writer, sheet_name='pivot')
+    with pd.ExcelWriter('W:/Learnpro/HSE Falls/'+learnpro_date.strftime('%Y%m%d')+' - HSE Falls.xlsx') as writer:
+        df.to_excel(writer, sheet_name='Export', index=False)
+        falls_piv.to_excel(writer, sheet_name='Summary')
                 # TODO add pivot
         # piv.to_excel(writer, sheet_name='pivot')
     writer.save()
+
+    #write to Named Lists HSE folder
+    df.drop(columns=['Pay_Number', 'WTE', 'Contract_Description', 'NI_Number', 'Date_Started', 'Job_Description', 'Post_Descriptor',
+                     'Pay_Band'], inplace=True)
+    with pd.ExcelWriter('W:/Learnpro/Named Lists HSE/'+learnpro_date.strftime('%Y-%m-%d')+'/'+learnpro_date.strftime('%Y%m%d')+' - HSE Falls.xlsx') as writer:
+        df.to_excel(writer, sheet_name='Export', index=False)
+        falls_piv.to_excel(writer, sheet_name='Summary')
+    writer.save()
+
 
     # for debugging - make csv file with all columns and data
 
@@ -294,7 +311,7 @@ def check_compliance(df, users):
     df = ni_fix(df)
 
     df.loc[((df['ID Number'].isin(long_abs)) & (
-        ~df['Falls Compliant'].isin(['Complete', 'Out of scope']))), 'Falls Compliant'] = '>=28 days Absence'
+        ~df['Falls Compliant'].isin(['Complete', 'Out of scope']))), 'Falls Compliant'] = '≥28 days Absence'
     df.loc[((df['ID Number'].isin(mat)) & (
         ~df['Falls Compliant'].isin(['Complete', 'Out of scope']))), 'Falls Compliant'] = 'Maternity Leave'
     df.loc[((df['ID Number'].isin(secondment)) & (

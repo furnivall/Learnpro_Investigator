@@ -63,6 +63,7 @@ def empower(date):
     df = pd.read_excel('C:/Learnpro_Extracts/LP_testData_31-05-20/empower_final.xlsx')
     print(df['Assessment Date'].iloc[0])
     df = df[df['Assessment Date'] > pd.to_datetime(date) - pd.DateOffset(years=3)]
+    df = df[df['Assessment Date'] < pd.Timestamp.now()]
     return df
 
 
@@ -123,7 +124,7 @@ def take_in_dir(list_of_modules):
     master['Module'] = master['Module'].astype('category')
 
     master['Assessment Date'] = pd.to_datetime(master['Assessment Date'], format='%d/%m/%y %H:%M')
-    eess = eESS('C:/Learnpro_Extracts/20200904-auto/CompliancePro_Extract.csv')
+    eess = eESS('C:/Learnpro_Extracts/20200904-auto/eESS.csv')
     master = master.append(eess, ignore_index=True)
 
     # deal with empower
@@ -183,6 +184,7 @@ def eESS(file):
     print(len(df['Assessment Date']))
 
     df['Assessment Date'] = pd.to_datetime(df['Assessment Date'], format='%Y/%m/%d')
+    df = df[df['Assessment Date'] < pd.Timestamp.now()]
 
     return df
 
@@ -314,7 +316,7 @@ def produce_files(df):
     df.to_csv("C:/Learnpro_Extracts/namedList.csv")
 
 
-def check_compliance(df):
+def check_compliance(df, users):
     """Takes in a df with test dates for each of the stat/mand modules, including both versions of safe info handling.
     It will produce a completed named list dataset ala the old CompliancePro"""
 
@@ -326,16 +328,17 @@ def check_compliance(df):
                  'Fire Emergency within the Ward', 'Fire Fighting Equipment', 'Fire Prevention',
                  'Introduction and General Fire Safety', 'Specialist Roles']
 
+    columnnames = {'GGC: 001 Fire Safety': 'Fire Awareness',
+                   'GGC: Health and Safety, an Introduction': 'Health, Safety & Welfare',
+                   'GGC: 003 Reducing Risks of Violence & Aggression': 'Violence and Aggression',
+                   'GGC: Equality, Diversity and Human Rights': 'Equality, Diversity and Human Rights',
+                   'GGC: Manual Handling Theory': 'Manual Handling',
+                   'GGC: Standard Infection Control Precautions ': 'Infection Control',
+                   'GGC: 008 Security & Threat': 'Security and Threat',
+                   }
     # iterate through modules, grabbing their test dates as appropriate
     for module in stat_mand:
-        columnnames = {'GGC: 001 Fire Safety': 'Fire Awareness',
-                       'GGC: Health and Safety, an Introduction': 'Health, Safety & Welfare',
-                       'GGC: 003 Reducing Risks of Violence & Aggression': 'Violence and Aggression',
-                       'GGC: Equality, Diversity and Human Rights': 'Equality, Diversity and Human Rights',
-                       'GGC: Manual Handling Theory': 'Manual Handling',
-                       'GGC: Standard Infection Control Precautions ': 'Infection Control',
-                       'GGC: 008 Security & Threat': 'Security and Threat',
-                       }
+
         if module in fire_mods:
             # add 1 year to fire test date to get expiry, then go to start of loop again
             df[module + ' Date'] = df[module + ' Date'] + pd.DateOffset(years=1)
@@ -403,6 +406,9 @@ def check_compliance(df):
     # add cols for SM1-9 to keep legacy shape ala compliancepro
     df = SM_num_maker(df)
 
+    for col in list(columnnames.values()):
+        df[col].loc[((df[col] == "Not Compliant") | (df[col].isnull())) & (~df['ID Number'].isin(users))] = 'No Account'
+
     # wrap up and produce final files
     produce_files(df)
 
@@ -410,7 +416,7 @@ def check_compliance(df):
 master_data, user_number = take_in_dir(stat_mand)
 print(type(master_data['Assessment Date'][0]))
 dates_frame = build_user_compliance_dates(master_data)
-check_compliance(dates_frame)
+check_compliance(dates_frame, user_number)
 
 endtime = pd.Timestamp.now()
 print(f'Runtime = {endtime - starttime}')

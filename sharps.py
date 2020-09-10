@@ -338,28 +338,54 @@ def produce_files(df):
 
     ggc_piv = pd.pivot_table(df, index=['Area', 'Sector/Directorate/HSCP'], columns='GGC Module', values='Pay_Number',
                              aggfunc='count', margins=True,fill_value=0, margins_name='All Staff')
-    ggc_piv['In scope'] = ggc_piv['Complete'] + ggc_piv['Expired'] + ggc_piv['No Account'] + ggc_piv['Not undertaken']
 
-    ggc_piv['Not at work'] = ggc_piv['Maternity Leave'] + ggc_piv['Suspended'] + ggc_piv['Secondment'] + \
-                             ggc_piv['>=28 days Absence']
-    ggc_piv['Compliance %'] = (ggc_piv['Complete'] / ggc_piv['In scope'] * 100).round(2)
+
+    ggc_piv['Not at work ≥ 28 days'] = ggc_piv['Maternity Leave'] + ggc_piv['Suspended'] + ggc_piv['Secondment'] + \
+                             ggc_piv['≥28 days Absence']
+
+    ggc_piv['In scope'] = ggc_piv['Complete'] + ggc_piv['Expired'] + ggc_piv['No Account'] + ggc_piv['Not undertaken'] + \
+                          ggc_piv['Not at work ≥ 28 days']
+    ggc_piv['Compliance %'] = ((ggc_piv['Complete'] + ggc_piv['Not at work ≥ 28 days']) / ggc_piv['In scope'] * 100).round(2)
     ggc_piv.drop(inplace=True, columns=['All Staff', 'Secondment', 'Suspended', 'Out Of Scope', 'Maternity Leave',
-                                        '>=28 days Absence'])
+                                        '≥28 days Absence'])
     ggc_piv = ggc_piv[ggc_piv['Compliance %'] > 0.01]
 
     nes_piv = pd.pivot_table(df, index=['Area', 'Sector/Directorate/HSCP'], columns='NES Module', values='Pay_Number',
                              aggfunc='count', margins=True, margins_name='All Staff', fill_value=0)
-    nes_piv['In scope'] = (nes_piv['Complete'] + nes_piv['Expired'] + nes_piv['No Account'] + nes_piv['Not undertaken']).round(2)
 
-    nes_piv['Not at work'] = nes_piv['Maternity Leave'] + nes_piv['Suspended'] + nes_piv['Secondment'] +\
-                             nes_piv['>=28 days Absence']
-    nes_piv['Compliance %'] = (nes_piv['Complete'] / nes_piv['In scope'] * 100).round(2)
+
+    nes_piv['Not at work ≥ 28 days'] = nes_piv['Maternity Leave'] + nes_piv['Suspended'] + nes_piv['Secondment'] +\
+                             nes_piv['≥28 days Absence']
+
+    nes_piv['In scope'] = (
+                nes_piv['Complete'] + nes_piv['Expired'] + nes_piv['No Account'] + nes_piv['Not undertaken'] +
+                nes_piv['Not at work ≥ 28 days']).round(2)
+
+    nes_piv['Compliance %'] = ((nes_piv['Complete'] + nes_piv['Not at work ≥ 28 days']) / nes_piv['In scope'] * 100).round(2)
     nes_piv.drop(inplace=True, columns=['All Staff', 'Secondment', 'Suspended', 'Out Of Scope', 'Maternity Leave',
-                                        '>=28 days Absence'])
+                                        '≥28 days Absence'])
     nes_piv = nes_piv[nes_piv['Compliance %'] > 0.01]
 
+
+    # These lines below hide the type of absence for privacy reasons. If you want to debug, then comment these out.
+    df.loc[((df['NES Module'].isin(['Secondment', 'Out of Scope', 'Maternity Leave', 'Suspended']))),
+           'NES Module'] = 'Not at work ≥ 28 days'
+    df.loc[((df['GGC Module'].isin(['Secondment', 'Out of Scope', 'Maternity Leave', 'Suspended']))),
+           'GGC Module'] = 'Not at work ≥ 28 days'
+
     # write to book
-    with pd.ExcelWriter('C:/Learnpro_Extracts/sharps/'+learnpro_date.strftime('%Y%m%d')+' - HSE Sharps.xlsx') as writer:
+    with pd.ExcelWriter('W:/Learnpro/HSE Sharps and Skins/'+learnpro_date.strftime('%Y%m%d')+' - HSE Sharps.xlsx') as writer:
+        df.to_excel(writer, sheet_name='Export', index=False)
+        # TODO add pivot
+        # piv.to_excel(writer, sheet_name='pivot')
+        ggc_piv.to_excel(writer, sheet_name='GGC Pivot')
+        nes_piv.to_excel(writer, sheet_name='NES Pivot')
+    writer.save()
+
+    # HSE Named Lists sharepoint upload:
+    df.drop(columns=['Pay_Number', 'WTE', 'Contract_Description', 'NI_Number', 'Date_Started', 'Job_Description', 'Post_Descriptor',
+                     'Pay_Band'], inplace=True)
+    with pd.ExcelWriter('W:/Learnpro/Named Lists HSE/'+learnpro_date.strftime('%Y-%m-%d')+'/'+learnpro_date.strftime('%Y%m%d')+' - HSE Sharps.xlsx') as writer:
         df.to_excel(writer, sheet_name='Export', index=False)
         # TODO add pivot
         # piv.to_excel(writer, sheet_name='pivot')
@@ -445,7 +471,7 @@ def check_compliance(df, users):
 
     # deal with not at work staff
     df.loc[((df['ID Number'].isin(long_abs)) & (
-        ~df['GGC'].isin(['Complete', 'Out Of Scope']))), 'GGC'] = '>=28 days Absence'
+        ~df['GGC'].isin(['Complete', 'Out Of Scope']))), 'GGC'] = '≥28 days Absence'
     df.loc[((df['ID Number'].isin(mat)) & (
         ~df['GGC'].isin(['Complete', 'Out Of Scope']))), 'GGC'] = 'Maternity Leave'
     df.loc[((df['ID Number'].isin(secondment)) & (
@@ -453,7 +479,7 @@ def check_compliance(df, users):
     df.loc[((df['ID Number'].isin(susp)) & (
         ~df['GGC'].isin(['Complete', 'Out Of Scope']))), 'GGC'] = 'Suspended'
     df.loc[((df['ID Number'].isin(long_abs)) & (
-        ~df['NES'].isin(['Complete', 'Out Of Scope']))), 'NES'] = '>=28 days Absence'
+        ~df['NES'].isin(['Complete', 'Out Of Scope']))), 'NES'] = '≥28 days Absence'
     df.loc[((df['ID Number'].isin(mat)) & (
         ~df['NES'].isin(['Complete', 'Out Of Scope']))), 'NES'] = 'Maternity Leave'
     df.loc[((df['ID Number'].isin(secondment)) & (
