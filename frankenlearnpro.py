@@ -144,6 +144,8 @@ def take_in_dir(list_of_modules):
 
     print(master.columns)
     print(master.dtypes)
+    master.sort_values(by='Assessment Date', ascending=True, inplace=True)
+    master.drop_duplicates(subset=['ID Number', 'Module'], keep='last')
     master.to_csv('C:/Learnpro_Extracts/bigfile.csv', index=False)
     # exit()
     return master, df_users
@@ -406,7 +408,18 @@ def check_compliance(df, users):
     # add cols for SM1-9 to keep legacy shape ala compliancepro
     df = SM_num_maker(df)
 
-    for col in list(columnnames.values()):
+    column_list = ['Public Protection',
+     'Information Governance',
+     'Fire Awareness',
+     'Health, Safety & Welfare',
+     'Violence and Aggression',
+     'Equality, Diversity and Human Rights',
+     'Manual Handling',
+     'Infection Control',
+     'Security and Threat',
+     ]
+
+    for col in column_list:
         df[col].loc[((df[col] == "Not Compliant") | (df[col].isnull())) & (~df['ID Number'].isin(users))] = 'No Account'
 
     # wrap up and produce final files

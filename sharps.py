@@ -143,8 +143,16 @@ def GGCScope(df):
     arwel_neuro = ['G9854092', 'G9843249', 'G9853174', 'G9854035', 'G9853491', 'G9853144', 'G9853581', 'G9853542']
     df = df[~df['Pay_Number'].isin(arwel_neuro)]
 
+    # In response to query from Marisa McAllister (14/09/20), removing Michele Barrett - quality manager - non-clinical
+    df = df[~(df['Pay_Number'] == 'G9830586')]
+
     # In response to Natalie Mcmillan / Margaret Anderson retirement notice - 01/09/2020
     df = df[~(df['Pay_Number'] == 'G0009520')]
+
+    # In response to Amanda Parker - estates + facilities sharps - 15/09/2020
+    amanda_parker = ['G9857762', 'G9858380', 'C6508413', 'C3007189']
+    df = df[~(df['Pay_Number'].isin(amanda_parker))]
+
 
     # Sector Level Exclusions
     df = df[~df['Sector/Directorate/HSCP'].isin(['Acute Corporate', 'Board Medical Director', 'Board Administration',

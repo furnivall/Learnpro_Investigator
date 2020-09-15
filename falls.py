@@ -100,7 +100,26 @@ def merge_scopes(concat):
     # incorrectly added
     sd['Falls Compliant'].loc[(sd['Cost_Centre'].isin(['G51126', 'G69311']))] = 'Out of scope'
 
+    # in response to Craig Broadfoot (14/09/20), a large list of consultants has been removed from scope
+    list_of_consultants = ['G9879385', 'G3014304', 'G3012239', 'G2965208', 'G3012247', 'G9463496', 'G950611X',
+                           'G9842847', 'G5906911', 'G9134654', 'G0003267', 'G3016420', 'G3033821', 'G9876054',
+                           'G9328939', 'G9877304', 'G9884616', 'G9886307', 'G9861715', 'G9557253', 'G5864593',
+                           'G4925688', 'G492035X', 'G9878810', 'G2966808', 'G2951797', 'G3009955', 'G297200X',
+                           'G9276769', 'G2980533', 'G2988801', 'G9854590', 'G9846003', 'G9219668', 'G9186832',
+                           'G0007361', 'G0285242', 'G0006354', 'G0003450', 'G3029395', 'G9871839', 'G3034925',
+                           'G301603X', 'G9496572', 'G9878294', 'G9876461', 'G9877777', 'G9536086', 'G0000003',
+                           'G9888845', 'G9883687', 'G9882775', 'G9868017', 'G910366X', 'G5828341', 'G3044947',
+                           'G9477098', 'G2994143', 'G9844086', 'G9849161', 'G9182640', 'G1081756', 'G3039471',
+                           'G3024466', 'G9364730', 'G934795X', 'G9530223', 'G9527850', 'G9530029', 'G9885350',
+                           'G9886988', 'G9869609', 'G2997606', 'G2988232', 'G9849287', 'G3040895', 'G9838092',
+                           'G9837737', 'G9874536', 'G9830944', 'G9831123', 'G9886234', 'G9867879', 'G9864751',
+                           'G9124578', 'G9849270', 'G9831099', 'G3010996', 'G2984032', 'G9178678', 'G9853537',
+                           'G3001725', 'G9472290', 'G9391770', 'G9149325', 'G0006196', 'G0446874']
+    sd['Falls Compliant'].loc[(sd['Pay_Number'].isin(list_of_consultants))] = 'Out of scope'
 
+    # in response to an email from Marisa McAllister (15/09/20), two staff in Oncology have been removed from scope.
+    oncology_150920 = ['G9850476', 'G9848847']
+    sd['Falls Compliant'].loc[(sd['Pay_Number'].isin(oncology_150920))] = 'Out of scope'
     print(sd['Falls Compliant'].value_counts())
     return sd
 
