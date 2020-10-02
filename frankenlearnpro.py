@@ -49,6 +49,24 @@ def sd_pull():  # UNUSED CURRENTLY
     df.columns = ['ID Number', 'NI Number']
     return df
 
+def NotatWork(date):
+    date = date.strftime('%Y-%m-%d')
+    df = pd.read_excel('W:/Daily_Absence/' + date + '.xls', skiprows=4)
+    print(df.columns)
+    print(f'Total absences: {len(df)}')
+    mat = df[df['AbsenceReason Description'] == 'Maternity Leave']['Pay No'].tolist()
+    df = df[~df['Pay No'].isin(mat)]
+    susp = df[df['Absence Type'] == 'Suspended']['Pay No'].tolist()
+    df = df[~df['Pay No'].isin(susp)]
+    secondment = df[df['AbsenceReason Description'] == 'Secondment']['Pay No'].tolist()
+    df = df[~df['Pay No'].isin(secondment)]
+
+    df['Absence Episode Start Date'] = pd.to_datetime(df['Absence Episode Start Date'], format='%Y-%m-%d')
+
+    day28 = pd.Timestamp.now() - pd.DateOffset(days=28)
+    long_abs = df[df['Absence Episode Start Date'] < day28]['Pay No'].tolist()
+    return mat, susp, secondment, long_abs
+
 
 def users_file():  # UNUSED CURRENTLY
     """Read in learnpro users file, then chop it to relevant identifiables"""
@@ -81,7 +99,7 @@ def take_in_dir(list_of_modules):
     #                        title="Choose a directory full of learnpro files."
     #                        )
 
-    dirname = 'C:/Learnpro_Extracts/20200904-auto'
+    dirname = 'C:/Learnpro_Extracts/20201001-auto'
 
     # initialise master dataframe
     master = pd.DataFrame()
@@ -124,7 +142,7 @@ def take_in_dir(list_of_modules):
     master['Module'] = master['Module'].astype('category')
 
     master['Assessment Date'] = pd.to_datetime(master['Assessment Date'], format='%d/%m/%y %H:%M')
-    eess = eESS('C:/Learnpro_Extracts/20200904-auto/eESS.csv')
+    eess = eESS('C:/Learnpro_Extracts/20200925-auto/CompliancePro Extract.csv')
     master = master.append(eess, ignore_index=True)
 
     # deal with empower
@@ -153,6 +171,7 @@ def take_in_dir(list_of_modules):
 
 def eESS(file):
     df = pd.read_csv(file, sep='\t', encoding='utf-16')
+    #df = pd.read_excel(file)
     eess_courses = ['GGC E&F StatMand - Equality, Diversity & Human Rights (face to face session)',
                     'GGC E&F StatMand - General Awareness Fire Safety Training (face to face session)',
                     'GGC E&F StatMand - Health & Safety an Induction (face to face session)',
@@ -290,6 +309,8 @@ def sd_merge(df):
 def produce_files(df):
     """Builds final files for named list"""
     df['Headcount'] = 1
+
+    df['Headcount'].loc[df['ID Number'].isin(mat + susp + long_abs + secondment)] = 'Not at work ≥ 28 days'
     # subset for final named list
     df2 = df[['ID Number', 'Area', 'Sector/Directorate/HSCP', 'Sub-Directorate 1', 'Sub-Directorate 2', 'department',
               'Cost_Centre', 'First', 'Last', 'Job_Family', 'Sub_Job_Family', 'Equality, Diversity and Human Rights',
@@ -302,15 +323,21 @@ def produce_files(df):
               'Security and Threat expires on...', 'Violence and Aggression expires on...', 'SM1', 'SM2', 'SM3', 'SM4',
               'SM5', 'SM6', 'SM7', 'SM8', 'SM9', 'Headcount']]
 
+
     # build pivot tab for comparison
     piv = pd.pivot_table(df, index='Sector/Directorate/HSCP',
                          values=['SM1', 'SM2', 'SM3', 'SM4', 'SM5', 'SM6', 'SM7', 'SM8', 'SM9'],
                          aggfunc=np.sum, margins=True)
     # produce compliance percentage row
+    cols = {'Fire Awareness': 'SM2', 'Health, Safety & Welfare': 'SM3', 'Violence and Aggression': 'SM9',
+     'Equality, Diversity and Human Rights': 'SM1', 'Manual Handling': 'SM6', 'Infection Control': 'SM4',
+     'Public Protection': 'SM7', 'Security and Threat': 'SM8', 'Information Governance': 'SM5'}
+    cols = {v: k for k, v in cols.items()}
+    piv.rename(columns=cols, inplace=True)
     piv.loc['% Compliance'] = round(piv.iloc[-1] / len(df) * 100, 1)
 
     # write to book
-    with pd.ExcelWriter('C:/Learnpro_Extracts/namedList.xlsx') as writer:
+    with pd.ExcelWriter('C:/Learnpro_Extracts/stat_mand'+pd.Timestamp.now().strftime('%Y%m%d')+'.xlsx') as writer:
         df2.to_excel(writer, sheet_name='data', index=False)
         piv.to_excel(writer, sheet_name='pivot')
 
@@ -424,8 +451,8 @@ def check_compliance(df, users):
 
     # wrap up and produce final files
     produce_files(df)
-
-
+notatwork_date = pd.to_datetime(learnpro_runtime, format='%d-%m-%y') - pd.DateOffset(days=1)
+mat, susp, secondment, long_abs = NotatWork(notatwork_date)
 master_data, user_number = take_in_dir(stat_mand)
 print(type(master_data['Assessment Date'][0]))
 dates_frame = build_user_compliance_dates(master_data)

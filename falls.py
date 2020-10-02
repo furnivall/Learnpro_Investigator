@@ -67,6 +67,8 @@ def workwithScopes(df):
     'Medical and Dental', 'Medical Support', 'Nursing and Midwifery',
     'Other Therapeutic', 'Personal and Social Care', 'Support Services']
     df.set_index('Cost Centre', inplace=True)
+
+
     df.dropna(subset=fams, inplace=True, how='all')
     print(len(df))
     output = []
@@ -114,12 +116,54 @@ def merge_scopes(concat):
                            'G9886988', 'G9869609', 'G2997606', 'G2988232', 'G9849287', 'G3040895', 'G9838092',
                            'G9837737', 'G9874536', 'G9830944', 'G9831123', 'G9886234', 'G9867879', 'G9864751',
                            'G9124578', 'G9849270', 'G9831099', 'G3010996', 'G2984032', 'G9178678', 'G9853537',
-                           'G3001725', 'G9472290', 'G9391770', 'G9149325', 'G0006196', 'G0446874']
+                           'G3001725', 'G9472290', 'G9391770', 'G9149325', 'G0006196', 'G0446874', 'G3046141']
     sd['Falls Compliant'].loc[(sd['Pay_Number'].isin(list_of_consultants))] = 'Out of scope'
 
     # in response to an email from Marisa McAllister (15/09/20), two staff in Oncology have been removed from scope.
     oncology_150920 = ['G9850476', 'G9848847']
     sd['Falls Compliant'].loc[(sd['Pay_Number'].isin(oncology_150920))] = 'Out of scope'
+
+    # A second email from Marisa McAllister (16/09/20) removed many more staff.
+    oncology_160920 = ['G0530247', 'G9834415', 'G9848926', 'G9864463', 'C1105078', 'G3015033', 'G9423079', 'G9382534',
+                       'G9489770', 'G9312749', 'G5947219', 'G5947251', 'G9530576', 'G956313X', 'C1149369', 'G9857313',
+                       'G9868320', 'G4926544', 'G4922964', 'G9200959', 'G9873026', 'G9169105', 'G0937959']
+    sd['Falls Compliant'].loc[(sd['Pay_Number'].isin(oncology_160920))] = 'Out of scope'
+
+    # Email from Patricia Lang (18/09/20) removed another few staff.
+    plastics180920 = ['G0000367', 'G3889035', 'G3906051', 'G9249109', 'G9862696', 'G949197X', 'G9278737', 'G0004951',
+                      'G9231153', 'G9841302', 'G9841603', 'G5920647','G9839432', 'G9843224', 'G9862696', 'G9157476',
+                      'G9264469', 'G9850002', 'G9842187', 'G9842896', 'G9278737', 'G9659684', 'G3880435', 'G0000367',
+                      'G9864203', 'G388970X', 'G5845696', 'G9249109', 'G09852914', 'G3906051', 'G9851616', 'G9880676',
+                      'G5877628', 'G9853044', 'G949197X', 'G3804704', 'G9835614', 'G3889025', 'G9865031', 'G3858707',
+                      'G00004951', 'G3813061']
+
+    sd['Falls Compliant'].loc[(sd['Pay_Number'].isin(plastics180920))] = 'Out of scope'
+
+    renal210920 = ['G0000367', 'G3889035', 'G3906051', 'G9249109', 'G9862696', 'G949197X', 'G9278737', 'G0004951',
+                   'G9231153', 'G9841302', 'G9841603', 'G5920647', 'G9556788', 'G591597X', 'G3853551', 'G9858884',
+                   'G9843276', 'G5836840', 'G107458X', 'G9867883', 'G5891507', 'G385454X', 'G9473025', 'G5866057',
+                   'G5912511', 'G9875028', 'G9140689', 'G9217142', 'G9868363', 'G0005791', 'G5865980', 'G391111X',
+                   'G9882128', 'G9443274', 'G9520147', 'G9843279']
+    sd['Falls Compliant'].loc[(sd['Pay_Number'].isin(renal210920))] = 'Out of scope'
+
+    neurology250920 = ['G0000003', 'G0003450', 'G9846003', 'G9878810', 'G2966808', 'G9854590', 'G9186832', 'G9871839',
+                       'G9878294', 'G9888845', 'G9882775', 'G3044947', 'G9831099', 'G9839077', 'G9849270', 'G1120417',
+                       'G9864697', 'G9830781', 'G9842969']
+    sd['Falls Compliant'].loc[(sd['Pay_Number'].isin(neurology250920))] = 'Out of scope'
+
+    gri_radiology = ['G9566090', 'G3890759', 'G1098217', 'G3850226', 'G3882802', 'G3889629', 'G9336532', 'G3895777',
+                     'G1035800', 'G108433X', 'G0674540', 'G4957792', 'G3905462', 'G1098748', 'G3884260', 'G3891968',
+                     'G3875199', 'G9887197', 'G9885618', 'G9246916', 'G9534482', 'G0714321', 'G9874312', 'G9869381',
+                     'G9863409', 'G9855443', 'G3895343']
+    sd['Falls Compliant'].loc[(sd['Pay_Number'].isin(gri_radiology))] = 'Out of scope'
+
+    sach_radiology = ['G0018392', 'G4905105', 'G1537652', 'G9405461', 'G9392106', 'G9241809', 'G4903501', 'G4915712',
+                      'G9847152', 'G0685089', 'G9847151', 'G9847152', 'G0464627']
+    sd['Falls Compliant'].loc[(sd['Pay_Number'].isin(sach_radiology))] = 'Out of scope'
+
+    #Pauline Simpson requested that consultants in her depts be removed from falls
+    sd['Falls Compliant'].loc[(sd['Sub-Directorate 2']=='Gynaecology') & (sd['Sub_Job_Family'] == 'Consultant')] = 'Out of scope'
+
     print(sd['Falls Compliant'].value_counts())
     return sd
 
@@ -260,7 +304,7 @@ def produce_files(df):
                             'All Staff'], inplace=True)
     falls_piv = falls_piv[['Complete', 'Not at work ≥ 28 days', 'Not Undertaken', 'Not Complete', 'No Account', 'In scope', 'Compliance %']]
     # To protect privacy of those who are off work >28 days. For debugging of absence type, comment this line.
-    df.loc[((df['Falls Compliant'].isin(['Secondment', 'Out of Scope', 'Maternity Leave', 'Suspended']))),
+    df.loc[((df['Falls Compliant'].isin(['Secondment', 'Out of Scope', 'Maternity Leave', 'Suspended', '≥28 days Absence']))),
            'Falls Compliant'] = 'Not at work ≥ 28 days'
 
     # write to book

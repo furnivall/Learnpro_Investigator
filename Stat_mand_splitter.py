@@ -1,7 +1,12 @@
 import pandas as pd
 import numpy as np
+from tkinter.filedialog import askopenfilename
 
-df = pd.read_excel('C:/Learnpro_Extracts/namedList.xlsx', sheet_name='data')
+filename = askopenfilename(initialdir='//ntserver5/generalDB/WorkforceDB/Learnpro/Named Lists',
+                           title="Choose the relevant stat/mand file - "
+                                 "it should be the 'GGC Pay Nums' file for the relevant month."
+                           )
+df = pd.read_excel(filename, sheet_name='data')
 print(df.columns)
 
 sectors = df['Sector/Directorate/HSCP'].unique()

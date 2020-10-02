@@ -74,6 +74,7 @@ def empower(date):
 
 
 def eESS(file, date):
+    #df = pd.read_excel(file)
     df = pd.read_csv(file, sep='\t', encoding='utf-16')
 
     eess_courses = ['GGC E&F Sharps - Disposal of Sharps (Toolbox Talks)',
@@ -106,8 +107,14 @@ def NESScope(df):
     # Support Services
     df = df[~(df['Job_Family'] == 'Support Services')]
 
-    # AHPs
-    df = df[~(df['Sub_Job_Family'].isin(['Diagnostic Radiography', 'Therapeutic Radiography', 'Orthotics']))]
+
+    # Specific exemptions within radiography:
+    radiographers_16092020 = ['G5887283', 'G0799173', 'G5907004', 'G9172343', 'G0013919']
+    df = df[~(df['Pay_Number'].isin(radiographers_16092020))]
+
+
+    # AHPs - removed then re-added diagnostic and therapeutic radiography on 16/09/2020
+    df = df[~(df['Sub_Job_Family'].isin(['Orthotics']))]
 
     df = df[~((df['Area'] == 'Partnerships') & df['Sub_Job_Family'].isin(['Physiotherapy', 'Occupational Therapy']))]
 
@@ -128,6 +135,11 @@ def NESScope(df):
 
     # Megan Fileman - request from Linda McCall - remedied on 01-09-2020
     df = df[~(df['Pay_Number'] == 'G9838100')]
+
+    # Sarah Dickson - req from Gillian Davie - 22-09-20
+    df = df[~(df['Pay_Number'] == 'G9836615')]
+
+
 
     print(f'NES Inscope: {len(df)}')
     df.to_excel('C:/Learnpro_Extracts/sharps/nestest.xlsx')
@@ -153,6 +165,19 @@ def GGCScope(df):
     amanda_parker = ['G9857762', 'G9858380', 'C6508413', 'C3007189']
     df = df[~(df['Pay_Number'].isin(amanda_parker))]
 
+    # Another Marisa McAllister one - 22-09-20
+    df = df[~(df['Pay_Number'] == 'G921741X')]
+
+    #mary mcfarlane - 25-09-20
+    gri_radiology = ['G9566090', 'G3890759', 'G1098217', 'G3850226', 'G3882802', 'G3889629', 'G9336532', 'G3895777',
+                     'G1035800', 'G108433X', 'G0674540', 'G4957792', 'G3905462', 'G1098748', 'G3884260', 'G3891968',
+                     'G3875199', 'G9887197', 'G9885618', 'G9246916', 'G9534482', 'G0714321', 'G9874312', 'G9869381',
+                     'G9863409', 'G9855443', 'G3895343']
+    df = df[~(df['Pay_Number'].isin(gri_radiology))]
+
+    sach_radiology = ['G0018392', 'G4905105', 'G1537652', 'G9405461', 'G9392106', 'G9241809', 'G4903501', 'G4915712',
+                      'G9847152', 'G0685089', 'G9847151', 'G9847152', 'G0464627']
+    df = df[~(df['Pay_Number'].isin(sach_radiology))]
 
     # Sector Level Exclusions
     df = df[~df['Sector/Directorate/HSCP'].isin(['Acute Corporate', 'Board Medical Director', 'Board Administration',
@@ -241,7 +266,7 @@ def take_in_dir(list_of_modules):
             df = pd.read_csv(dirname + "/" + file, skiprows=11, sep="\t")
             user_ids = df['ID Number'].unique().tolist()
 
-        elif 'eESS' in file:
+        elif 'CompliancePro Extract' in file:
             eESS_data = eESS(dirname + '/' + file, learnpro_date)
             master = master.append(eESS_data, ignore_index=True)
 
@@ -376,9 +401,9 @@ def produce_files(df):
 
 
     # These lines below hide the type of absence for privacy reasons. If you want to debug, then comment these out.
-    df.loc[((df['NES Module'].isin(['Secondment', 'Out of Scope', 'Maternity Leave', 'Suspended']))),
+    df.loc[((df['NES Module'].isin(['Secondment', 'Out of Scope', 'Maternity Leave', 'Suspended', '≥28 days Absence']))),
            'NES Module'] = 'Not at work ≥ 28 days'
-    df.loc[((df['GGC Module'].isin(['Secondment', 'Out of Scope', 'Maternity Leave', 'Suspended']))),
+    df.loc[((df['GGC Module'].isin(['Secondment', 'Out of Scope', 'Maternity Leave', 'Suspended', '≥28 days Absence']))),
            'GGC Module'] = 'Not at work ≥ 28 days'
 
     # write to book
