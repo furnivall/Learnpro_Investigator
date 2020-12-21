@@ -95,11 +95,11 @@ def take_in_dir(list_of_modules):
     # prompt for dir
 
     # TODO swap this back when testing is done
-    # dirname = askdirectory(initialdir='//ntserver5/generalDB/WorkforceDB/Learnpro/data',
-    #                        title="Choose a directory full of learnpro files."
-    #                        )
+    dirname = askdirectory(initialdir='//ntserver5/generalDB/WorkforceDB/Learnpro/data',
+                           title="Choose a directory full of learnpro files."
+                           )
 
-    dirname = 'C:/Learnpro_Extracts/20201001-auto'
+    # dirname = 'C:/Learnpro_Extracts/20201009-auto'
 
     # initialise master dataframe
     master = pd.DataFrame()
@@ -130,6 +130,11 @@ def take_in_dir(list_of_modules):
             master = master.append(df, ignore_index=True)
 
             print(file + " added to master, current size= " + str(len(master)))
+        # create master list of id numbers
+        elif 'users' in file:
+            df = pd.read_csv(dirname + "/" + file, skiprows=11, sep="\t")
+            df_users = df['ID Number'].unique().tolist()
+
 
         else:
             # TODO deal with empower, eESS etc
@@ -142,15 +147,14 @@ def take_in_dir(list_of_modules):
     master['Module'] = master['Module'].astype('category')
 
     master['Assessment Date'] = pd.to_datetime(master['Assessment Date'], format='%d/%m/%y %H:%M')
-    eess = eESS('C:/Learnpro_Extracts/20200925-auto/CompliancePro Extract.csv')
+    eess = eESS(dirname + '/CompliancePro Extract.csv')
     master = master.append(eess, ignore_index=True)
 
     # deal with empower
     empower_data = empower(startdate_fire)
     master = master.append(empower_data)
 
-    # create master list of id numbers
-    df_users = master['ID Number'].unique().tolist()
+
 
     # beautiful and elegant nested list comprehension
     modules = [item for sublist in modules for item in sublist]
@@ -291,7 +295,7 @@ def sd_merge(df):
 
 
     # TODO point this somewhere else
-    sd = pd.read_excel('W:/Staff Downloads/2020-08 - Staff Download.xlsx')
+    sd = pd.read_excel('W:/Staff Downloads/2020-11 - Staff Download.xlsx')
 
     # Cleaning step - vital for merge to work properly - ID number must be on both sides of merge
     sd = sd.rename(columns={'Pay_Number': 'ID Number', 'Forename': 'First', 'Surname': 'Last'})
@@ -310,7 +314,7 @@ def produce_files(df):
     """Builds final files for named list"""
     df['Headcount'] = 1
 
-    df['Headcount'].loc[df['ID Number'].isin(mat + susp + long_abs + secondment)] = 'Not at work ≥ 28 days'
+
     # subset for final named list
     df2 = df[['ID Number', 'Area', 'Sector/Directorate/HSCP', 'Sub-Directorate 1', 'Sub-Directorate 2', 'department',
               'Cost_Centre', 'First', 'Last', 'Job_Family', 'Sub_Job_Family', 'Equality, Diversity and Human Rights',
@@ -335,9 +339,16 @@ def produce_files(df):
     cols = {v: k for k, v in cols.items()}
     piv.rename(columns=cols, inplace=True)
     piv.loc['% Compliance'] = round(piv.iloc[-1] / len(df) * 100, 1)
-
+    df2.rename(columns={'Headcount':'At work?'}, inplace=True)
+    df2['At work?'].loc[df['ID Number'].isin(mat + susp + long_abs + secondment)] = 'Not at work ≥ 28 days'
     # write to book
     with pd.ExcelWriter('C:/Learnpro_Extracts/stat_mand'+pd.Timestamp.now().strftime('%Y%m%d')+'.xlsx') as writer:
+        df2.to_excel(writer, sheet_name='data', index=False)
+        piv.to_excel(writer, sheet_name='pivot')
+
+
+    month_code = pd.Timestamp.now() - pd.DateOffset(months=1)
+    with pd.ExcelWriter('W:/Learnpro/Named Lists/'+month_code.strftime('%Y-%m')+'/'+month_code.strftime('%Y-%m')+' GGC Paynums.xlsx') as writer:
         df2.to_excel(writer, sheet_name='data', index=False)
         piv.to_excel(writer, sheet_name='pivot')
 
@@ -382,7 +393,7 @@ def check_compliance(df, users):
             df['Information Governance'] = np.where((df['GGC: 009 Safe Information Handling Date'].notnull())
                                                     | (df['Safe Information Handling Date'].notnull()), "Complete",
                                                     "Not Compliant")
-            df['Information Governance expires on...'] = df['Information Governance Date'] + pd.DateOffset(years=3)
+            df['Information Governance expires on...'] = df['Information Governance Date']
             continue
 
         # the courses all have a shorter name to look nicer (see above dictionary)

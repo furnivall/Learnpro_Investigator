@@ -85,11 +85,19 @@ def workwithScopes(df):
     return output
 
 def merge_scopes(concat):
-    sd = pd.read_excel('W:/Staff Downloads/2020-08 - Staff Download.xlsx')
+    sd = pd.read_excel('W:/Staff Downloads/2020-11 - Staff Download.xlsx')
     print(sd.columns)
     sd['Concat'] = sd['Cost_Centre'] + sd['Job_Family']
     sd['Falls Compliant'] = ""
     sd['Falls Compliant'].loc[~sd['Concat'].isin(concat)] = 'Out of scope'
+
+    # Due to some weird new cost centres being created by Clyde for all training grades docs,
+    # we've now moved these into scope.
+    sd['Falls Compliant'].loc[sd['Cost_Centre'].str.startswith('GZCL')] = ''
+    # Same as above but for GDSG grades
+    sd['Falls Compliant'].loc[sd['Cost_Centre'].str.startswith('GDSG')] = ''
+
+    sd['Falls Compliant'].loc[sd['Cost_Centre']=='G16169'] = ''
 
     # In response to query from Pauline Simpson (28/08/2020), we have removed all Obstetrics staff from the scope list
     sd['Falls Compliant'].loc[sd['Sub-Directorate 2'] == 'Obstetrics'] = 'Out of scope'
@@ -97,6 +105,16 @@ def merge_scopes(concat):
     # In response to a query from Stephanie Mckay (08/09/2020), we have added "Qeuh-neuro + Omfs Opd" to the
     # scope for Falls
     sd['Falls Compliant'].loc[sd['department'] == 'Qeuh-neuro + Omfs Opd'] = ''
+
+    sd['Falls Compliant'].loc[sd['Pay_Number'] == 'G9829789'] = ''
+
+
+
+    # in response to query from Aline Williams (19/10/2020)
+    sd['Falls Compliant'].loc[sd['department'] == 'Rah - Pain Service'] = 'Out of scope'
+    sd['Falls Compliant'].loc[sd['Pay_Number'] == 'G3025365'] = 'Out of scope'
+    # In response to a query from Joyce Brown (15/10/2020) we have removed someone from scope
+    sd['Falls Compliant'].loc[sd['Pay_Number'] == 'G9851266'] = 'Out of scope'
 
     # in response to Cameron's look of shock, we have removed two cost centres with a single in-scope AHP as they
     # incorrectly added
@@ -139,6 +157,12 @@ def merge_scopes(concat):
 
     sd['Falls Compliant'].loc[(sd['Pay_Number'].isin(plastics180920))] = 'Out of scope'
 
+    #john carson 23-11-20
+    jc231120 = ['G9356274', 'G9862852', 'G9873827', 'G3821978', 'G9184333', 'G9870974', 'G9321047', 'C1064568',
+                'G9878923', 'G7109830', 'G7109849', 'G0014206', 'G1055453', 'G7141637', 'C3003922', 'G9181830',
+                'G9849400', 'G9404007', 'C9523502', 'G9838544', 'G9867335']
+    sd['Falls Compliant'].loc[(sd['Pay_Number'].isin(jc231120))] = 'Out of scope'
+
     renal210920 = ['G0000367', 'G3889035', 'G3906051', 'G9249109', 'G9862696', 'G949197X', 'G9278737', 'G0004951',
                    'G9231153', 'G9841302', 'G9841603', 'G5920647', 'G9556788', 'G591597X', 'G3853551', 'G9858884',
                    'G9843276', 'G5836840', 'G107458X', 'G9867883', 'G5891507', 'G385454X', 'G9473025', 'G5866057',
@@ -151,6 +175,8 @@ def merge_scopes(concat):
                        'G9864697', 'G9830781', 'G9842969']
     sd['Falls Compliant'].loc[(sd['Pay_Number'].isin(neurology250920))] = 'Out of scope'
 
+
+
     gri_radiology = ['G9566090', 'G3890759', 'G1098217', 'G3850226', 'G3882802', 'G3889629', 'G9336532', 'G3895777',
                      'G1035800', 'G108433X', 'G0674540', 'G4957792', 'G3905462', 'G1098748', 'G3884260', 'G3891968',
                      'G3875199', 'G9887197', 'G9885618', 'G9246916', 'G9534482', 'G0714321', 'G9874312', 'G9869381',
@@ -158,11 +184,31 @@ def merge_scopes(concat):
     sd['Falls Compliant'].loc[(sd['Pay_Number'].isin(gri_radiology))] = 'Out of scope'
 
     sach_radiology = ['G0018392', 'G4905105', 'G1537652', 'G9405461', 'G9392106', 'G9241809', 'G4903501', 'G4915712',
-                      'G9847152', 'G0685089', 'G9847151', 'G9847152', 'G0464627']
+                      'G9847152', 'G0685089', 'G9847151', 'G9847152', 'G0464627', 'G9194428']
     sd['Falls Compliant'].loc[(sd['Pay_Number'].isin(sach_radiology))] = 'Out of scope'
+
+    # Heather Richardson quick 3 - 27-10-20
+    heather_271020 = ['G9854861', 'G9836783', 'G0003491', 'G9566090']
+    sd['Falls Compliant'].loc[(sd['Pay_Number'].isin(heather_271020))] = 'Out of scope'
+
+    # craig broadfoot 28-10-20 - time sensitive
+    craig_broadfoot281020 = ['G9860114', 'G9888845', 'G9844999', 'G9844920', 'G9843272', 'G9851460', 'G9847464', 'G3018970']
+    if learnpro_date < pd.to_datetime('01-01-21', dayfirst=True):
+        sd['Falls Compliant'].loc[(sd['Pay_Number']).isin(craig_broadfoot281020)] = 'Out of scope'
+
+    kim_kilgour281020 = ['G9831479', 'G9838034', 'G9842367']
+    if learnpro_date < pd.to_datetime('01-01-21', dayfirst=True):
+        sd['Falls Compliant'].loc[(sd['Pay_Number']).isin(kim_kilgour281020)] = 'Out of scope'
 
     #Pauline Simpson requested that consultants in her depts be removed from falls
     sd['Falls Compliant'].loc[(sd['Sub-Directorate 2']=='Gynaecology') & (sd['Sub_Job_Family'] == 'Consultant')] = 'Out of scope'
+
+    #Heather Richardson requested that all training grades in this cost centre be removed from scope
+    sd['Falls Compliant'].loc[(sd['Cost_Centre'] == 'G40520') & (sd['Sub_Job_Family'] == 'Training Grades')] = 'Out of scope'
+
+    # Jean Still
+    sd['Falls Compliant'].loc[sd['Cost_Centre'] == 'G67062'] = 'Out of scope'
+    sd['Falls Compliant'].loc[sd['Pay_Number'].isin(['G7132980', 'G7160968'])] = 'Out of scope'
 
     print(sd['Falls Compliant'].value_counts())
     return sd
@@ -292,15 +338,16 @@ def produce_files(df):
                                'Medical and Dental'])], index=['Job_Family','Sector/Directorate/HSCP'],
                                columns='Falls Compliant',
                                values='Pay_Number', aggfunc='count', fill_value=0, margins=True, margins_name='All Staff')
-    falls_piv['Not at work ≥ 28 days'] = falls_piv['Secondment'] + falls_piv['Maternity Leave'] + \
-                               falls_piv['≥28 days Absence'] + falls_piv['Suspended']
-
+    falls_piv['Not at work ≥ 28 days'] = falls_piv['Maternity Leave'] + \
+                                        +falls_piv['≥28 days Absence'] \
+                                         + falls_piv['Suspended']
+                                            # falls_piv['Secondment'] +\
 
     falls_piv['In scope'] = falls_piv['Complete'] + falls_piv['No Account'] \
                             + falls_piv['Not Undertaken'] + falls_piv['Not Complete'] + falls_piv['Not at work ≥ 28 days']
     falls_piv['Compliance %'] = ((falls_piv['Complete'] + falls_piv['Not at work ≥ 28 days']) / falls_piv['In scope'] * 100).round(2)
     falls_piv = falls_piv[falls_piv['Compliance %'] > 5]
-    falls_piv.drop(columns=['Maternity Leave', 'Suspended', '≥28 days Absence', 'Secondment', 'Out of scope',
+    falls_piv.drop(columns=['Maternity Leave', 'Suspended', '≥28 days Absence',  'Out of scope', #'Secondment',
                             'All Staff'], inplace=True)
     falls_piv = falls_piv[['Complete', 'Not at work ≥ 28 days', 'Not Undertaken', 'Not Complete', 'No Account', 'In scope', 'Compliance %']]
     # To protect privacy of those who are off work >28 days. For debugging of absence type, comment this line.

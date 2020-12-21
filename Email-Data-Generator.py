@@ -58,8 +58,43 @@ def take_in_stat_mand():
        'GGC Date', 'NES Module', 'NES Date', 'Falls Compliant', 'Falls Date',
        'M and H Compliant', 'M and H Date']]
     print("If it reaches here, all cols correct")
-    df.to_excel('W:/ukan/danny_staff_files/'+pd.Timestamp.now().strftime('%Y%m%d')+' - Staff File.xlsx', index=False)
 
+    df.to_excel('W:/ukan/danny_staff_files/'+pd.Timestamp.now().strftime('%Y%m%d')+' - Staff File.xlsx', index=False)
+    df.rename(inplace=True, columns={
+        'Sector/Directorate/HSCP': 'Sector',
+        'Sub-Directorate 1': 'Subdir1',
+        'Sub-Directorate 2': 'Subdir2',
+        'department': 'Dept',
+        'Work Email Address': 'Work_Email',
+        'Manager Payroll': 'Manager_Payroll',
+        'LP Account': 'LP_bool',
+        'Equality, Diversity and Human Rights': 'EDHR',
+        'Fire Awareness': 'Fire',
+        'Health, Safety & Welfare': 'HSW',
+        'Infection Control': 'IC',
+        'Information Governance': 'IG',
+        'Manual Handling': 'ManH',
+        'Public Protection': 'PP',
+        'Security and Threat': 'ST',
+        'Violence and Aggression': 'VA',
+        'Equality, Diversity and Human Rights expires on...': 'EDHR_Date',
+        'Fire Awareness expires on...': 'Fire_Date',
+        'Health, Safety & Welfare expires on...': 'HSW_Date',
+        'Infection Control expires on...': 'IC_Date',
+        'Information Governance expires on...': 'IG_Date',
+        'Manual Handling expires on...': 'ManH_Date',
+        'Public Protection expires on...': 'PP_Date',
+        'Security and Threat expires on...': 'ST_Date',
+        'Violence and Aggression expires on...': 'VA_Date',
+        'GGC Module': 'GGC_Sharps',
+        'GGC Date': 'GGC_Sharps_Date',
+        'NES Module': 'NES_Sharps',
+        'NES Date': 'NES_Sharps_Date',
+        'Falls Compliant': 'Falls',
+        'Falls Date': 'Falls_Date',
+        'M and H Compliant': 'MH',
+        'M and H Date': 'MH_Date'})
+    df.to_excel('W:/ukan/danny_staff_files/'+pd.Timestamp.now().strftime('%Y%m%d')+' - New_Format.xlsx', index=False)
 
 
 
@@ -88,6 +123,7 @@ def falls():
 
     df['Falls Compliant'].loc[~df['Falls Compliant'].isin(['Out of scope', 'Complete'])] = '0'
     df['Falls Compliant'].loc[df['Falls Compliant'] == 'Complete'] = '1'
+    df['Falls Compliant'].loc[df['Falls Compliant'] == 'Out of scope'] = 'Out Of Scope'
     print(df['Falls Compliant'].value_counts())
     df['Falls Date'] = df['Falls Date'].dt.strftime('%d/%m/%Y')
     print(df['Falls Date'].head(5))
@@ -117,8 +153,17 @@ def MH():
     print(df.columns)
     df = df[['Pay_Number', 'Assessed Category']]
     print(df['Assessed Category'].value_counts())
-    df['Assessed Category'].loc[df['Assessed Category'].isin(['3 or more', 2, 1 ])] = 'Complete'
-    df['Assessed Category'].loc[df['Assessed Category'] == 0] = 'Not Undertaken'
+    mh_dictionary = {'3 or more':1,
+                     '2':1, 2:1,
+                     1:1, '1':1,
+                     0:0, '0':0,
+                     'Out of scope':'Out Of Scope',
+                     'Not at work ≥ 28 days':1, }
+    df['Assessed Category'] = df['Assessed Category'].map(mh_dictionary)
+    # df['Assessed Category'].loc[df['Assessed Category'].isin(['3 or more', 2, 1, '1', '2', 'Not at work ≥ 28 days'])] = 'Complete'
+    # df['Assessed Category'].loc[df['Assessed Category']=='0'] = 'Not Undertaken'
+    # df['Assessed Category'].loc[df['Assessed Category'] == 0] = 'Not Undertaken'
+    # df['Assessed Category'].loc[df['Assessed Category'] == 'Out of scope'] = 'Out Of Scope'
     df = df.rename(columns={'Assessed Category':'M and H Compliant'})
     df['M and H Date'] = ''
     print(df['M and H Compliant'].value_counts())
@@ -128,7 +173,7 @@ def MH():
 def manager_emails():
     filename = askopenfilename(initialdir= 'W:/ukan/eESS email extracts',
                                title='Choose the correct manager email file')
-    df = pd.read_excel(filename)
+    df = pd.read_csv(filename, encoding='utf-16', sep='\t')
     print(df.columns)
     manager_lookup = dict(zip(df['Employee Number'], df['Payroll Number']))
     print(len(manager_lookup))
@@ -145,7 +190,8 @@ def manager_emails():
 # # users = users_file()
 # # falls = falls()
 # # sharps = sharps()
-# # mh = MH()
+# mh = MH()
+# exit()
 stat_mand = take_in_stat_mand()
 
 

@@ -8,10 +8,12 @@ filename = askopenfilename(initialdir='//ntserver5/generalDB/WorkforceDB/Learnpr
                            )
 df = pd.read_excel(filename, sheet_name='data')
 print(df.columns)
-
+month = input('Current month? e.g. 2020-10')
 sectors = df['Sector/Directorate/HSCP'].unique()
 print(sectors)
-coldic = {'SM1':'Equality & Diversity', 'SM2':'Fire Safety', 'SM3':'Health & Safety', 'SM4':'Infec. Control', 'SM5':'Info Governance', 'SM6':'Manual Handling', 'SM7':'Public Protection', 'SM8':'Security & Threat', 'SM9':'Violence & Aggression'}
+coldic = {'SM1':'Equality & Diversity', 'SM2':'Fire Safety', 'SM3':'Health & Safety', 'SM4':'Infec. Control',
+          'SM5':'Info Governance', 'SM6':'Manual Handling', 'SM7':'Public Protection', 'SM8':'Security & Threat',
+          'SM9':'Violence & Aggression'}
 for area in df['Area'].unique():
     dfw = df[df['Area'] == area]
     piv = pd.pivot_table(dfw, index='Sector/Directorate/HSCP',
@@ -20,7 +22,7 @@ for area in df['Area'].unique():
     piv.loc['% Compliance'] = round(piv.iloc[-1] / len(dfw) * 100, 1)
     piv.rename(columns=coldic)
     dfw.drop(columns=['ID Number'], inplace=True)
-    with pd.ExcelWriter('W:/Learnpro/Named Lists/2020-08/2020-08 '+area+'.xlsx') as writer:
+    with pd.ExcelWriter('W:/Learnpro/Named Lists/'+month+'/'+month+' '+area+'.xlsx') as writer:
         dfw.to_excel(writer, sheet_name='data', index=False)
         piv.to_excel(writer, sheet_name='pivot')
 for sector in sectors:
@@ -33,7 +35,7 @@ for sector in sectors:
     dfx.drop(columns=['ID Number'], inplace=True)
     piv.rename(columns=coldic)
     # write to book
-    with pd.ExcelWriter('W:/Learnpro/Named Lists/2020-08/2020-08 '+sector+'.xlsx') as writer:
+    with pd.ExcelWriter('W:/Learnpro/Named Lists/'+month+'/'+month+' '+sector+'.xlsx') as writer:
         dfx.to_excel(writer, sheet_name='data', index=False)
         piv.to_excel(writer, sheet_name='pivot')
     writer.save()
@@ -46,8 +48,8 @@ for sector in sectors:
                                  aggfunc=np.sum, margins=True)
             piv.loc['% Compliance'] = round(piv.iloc[-1] / len(dfx) * 100, 1)
             piv.rename(columns=coldic)
-            with pd.ExcelWriter('W:/Learnpro/Named Lists/2020-08/2020-08 ' + sector + ' - ' + subdir.replace('/',
-                                                                                                             "'").replace('&',"'") + '.xlsx') as writer:
+            with pd.ExcelWriter('W:/Learnpro/Named Lists/'+month+'/'+month+' ' + sector + ' - ' + subdir.replace('/',
+                "'").replace('&',"'") + '.xlsx') as writer:
                 dfy.to_excel(writer, sheet_name='data', index=False)
                 piv.to_excel(writer, sheet_name='pivot')
                 writer.save()

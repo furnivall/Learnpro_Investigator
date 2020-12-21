@@ -74,16 +74,18 @@ def empower(date):
 
 
 def eESS(file, date):
-    #df = pd.read_excel(file)
+    # df = pd.read_excel(file)
     df = pd.read_csv(file, sep='\t', encoding='utf-16')
 
     eess_courses = ['GGC E&F Sharps - Disposal of Sharps (Toolbox Talks)',
                     'GGC E&F Sharps - Inappropriate Disposal of Sharps',
                     'GGC E&F Sharps - Management of Injuries (Toolbox Talks)']
     df = df[df['Course Name'].isin(eess_courses)]
+
     with open("C:/Learnpro_Extracts/eesslookup.txt", "r") as file:
         data = file.read()
     eesslookup = eval(data)
+
     df['Pay Number'] = df['Employee Number'].map(eesslookup)
     df['Course'] = 'GGC: Management of Needlestick & Similar Injuries'
     df = df.rename(
@@ -96,6 +98,7 @@ def eESS(file, date):
     df = df[df['Assessment Date'] > pd.to_datetime(date) - pd.DateOffset(years=2)]
     df['GGC Source'] = 'eESS'
     df['Assessment Date'] = df['Assessment Date'].dt.strftime('%d/%m/%y %H:%M')
+    df.to_csv('C:/Tong/eESS_data_test.csv', index=False)
     return df
 
 
@@ -107,11 +110,14 @@ def NESScope(df):
     # Support Services
     df = df[~(df['Job_Family'] == 'Support Services')]
 
-
     # Specific exemptions within radiography:
     radiographers_16092020 = ['G5887283', 'G0799173', 'G5907004', 'G9172343', 'G0013919']
     df = df[~(df['Pay_Number'].isin(radiographers_16092020))]
 
+    df = df[~(df['Pay_Number'] == 'G9231447')]
+
+    # Linda Arthur
+    linda_arthur_202021106 = ['G9376291', 'G9376305', 'G9376313', 'G9852132', 'G7094930', 'G7077491', 'G9829789']
 
     # AHPs - removed then re-added diagnostic and therapeutic radiography on 16/09/2020
     df = df[~(df['Sub_Job_Family'].isin(['Orthotics']))]
@@ -139,10 +145,27 @@ def NESScope(df):
     # Sarah Dickson - req from Gillian Davie - 22-09-20
     df = df[~(df['Pay_Number'] == 'G9836615')]
 
+    # Claire Goodfellow - 22-10-20
+    df = df[~(df['Pay_Number'].isin(
+        ['G1111922', 'G0006757', 'G9834581', 'G0006757', 'G9871222', 'G0001494', 'G9871035', 'G9888166']))]
 
+    # Gillian Gall
+    df = df[df['Pay_Number'] != 'G9838705']
+
+    # Christine Brownlie
+    df = df[df['Pay_Number'] != 'G0445649']
+
+    # Lynn Smith
+    df = df[df['Pay_Number'] != 'G9841051']
+
+    # Catherine Nivison
+    df = df[~(df['Pay_Number'].isin(['G9838979', 'G9841872', 'G9838926', 'G9828935', 'G9872210']))]
+
+    # Alison Leiper
+    df = df[df['Pay_Number'] != 'G9839094']
 
     print(f'NES Inscope: {len(df)}')
-    df.to_excel('C:/Learnpro_Extracts/sharps/nestest.xlsx')
+
     return df
 
 
@@ -151,8 +174,75 @@ def GGCScope(df):
 
     df_orig = df
 
+    # donna mooney
+    dm241120 = ['G7158327', 'G7123698', 'G9853847', 'G9170294', 'G9838146', ' G9876217', 'G3043002', 'G7155328']
+    df = df[~(df['Pay_Number'].isin(dm241120))]
+
+    # Jillian Pounds
+    df = df[~(df['Pay_Number'] == 'G9838216')]
+
+    # Tom Quinn
+    tq_19112020 = ['G9424490', 'G9828619', 'G9830171', 'G9832581', 'G9848211', 'G9828738', 'G9830329', 'G9830328',
+                   'G9828710',
+                   'G1537831', 'G9829089', 'G9830169', ' G9874561']
+    df = df[~(df['Pay_Number'].isin(tq_19112020))]
+
+    # Kevin Tolland
+    df = df[df['Pay_Number'] != 'G9830111']
+
+    # Janice Niven
+    janice_niven_20201028 = ['G9872242', 'G9844137', 'G0185116', 'G928317X', 'G9844137', 'G0185116', 'G9832754',
+                             'G0588709']
+    df = df[~(df['Pay_Number']).isin(janice_niven_20201028)]
+
+    # Geraldine Cairns 28-10-20
+    ger_cairns20201028 = ['G9197885' 'G9867991' 'C1158031' 'G9170472' 'G9847251' 'G9847253'
+                          'G9839964' 'G9846775' 'G1087576' 'G7123744' 'G9532226' 'G9859180'
+                          'G9866627' 'G7142250' 'G9877625' 'G9867976' 'G9376291' 'G9376305'
+                          'G9376313' 'G9852132' 'G7094930' 'G7077491' 'G9879429' 'G9887236'
+                          'G911887X' 'G9837798']
+    df = df[~(df['Pay_Number'].isin(ger_cairns20201028))]
+
+    # Christina Heuston - 28-10-20
+    df = df[df['Pay_Number'] != 'G9848514']
+    df = df[df['Pay_Number'] != 'G936448X']
+    df = df[~(df['Pay_Number'].isin(['G0135569', 'G9536671', 'G7077939']))]
+
+    # Joyce Brown - 15/10/20
+    df = df[df['Pay_Number'] != 'G9851266']
+
+    # Jacqueline Pollock
+    jp20201124 = ['G9401113', 'C9513639', 'G9855505', 'G4958780', 'G9111549', 'G926485X', 'G9863835']
+    df = df[~(df['Pay_Number'].isin(jp20201124))]
+
+    # Allison Morrison
+    df = df[df['Pay_Number'] != 'G9829089']
+
+    # Triple P
+    df = df[
+        ~(df['Pay_Number'].isin(['G9877625', 'G9867976', 'G9881708', 'G9866999', 'G9354247', 'G9864202', 'G9864175']))]
+
+    # Heather Richardson - 28-10-20
+    df = df[df['Pay_Number'] != 'G9566090']
+
+    # Stephen Wallace - 30-10-20
+    df = df[~(df['Cost_Centre'].isin(['G43217', 'G43221', 'G49009', 'G22515']))]
+
+    # Catriona Reid - 28-10-20
+    cat_reid281020 = ['G9837681', 'G7161069', 'G4950259', 'G914109X', 'G9849451', 'G7154224', 'G9840589', 'G9190503',
+                      'G9852573']
+    df = df[~df['Pay_Number'].isin(cat_reid281020)]
+
+    # In response to query from Aline Williams (19/10/20)
+    df = df[df['department'] != 'Gri Macmillan Bereavement Cntr']
+
+    # In response to query from Cindy Wallis, (16/08/20), removed some of the Primary Care MH team in East Ren
+    pcmh20201016 = ['G7154224', 'G9849451', 'G9840589', 'G9840356', 'G9340696']
+    df = df[~df['Pay_Number'].isin(pcmh20201016)]
+
     # In response to query from Arwel Williams (28/08/20), removed certain training grades neuro docs
-    arwel_neuro = ['G9854092', 'G9843249', 'G9853174', 'G9854035', 'G9853491', 'G9853144', 'G9853581', 'G9853542']
+    arwel_neuro = ['G9854092', 'G9843249', 'G9853174', 'G9854035', 'G9853491', 'G9853144', 'G9853581', 'G9853542',
+                   'G9830229']
     df = df[~df['Pay_Number'].isin(arwel_neuro)]
 
     # In response to query from Marisa McAllister (14/09/20), removing Michele Barrett - quality manager - non-clinical
@@ -168,16 +258,31 @@ def GGCScope(df):
     # Another Marisa McAllister one - 22-09-20
     df = df[~(df['Pay_Number'] == 'G921741X')]
 
-    #mary mcfarlane - 25-09-20
+    # Another Marisa McAllister one - 20-10-20
+    df = df[~(df['Pay_Number'].isin(['G9856432', 'G9828708']))]
+
+    # mary mcfarlane - 25-09-20
     gri_radiology = ['G9566090', 'G3890759', 'G1098217', 'G3850226', 'G3882802', 'G3889629', 'G9336532', 'G3895777',
                      'G1035800', 'G108433X', 'G0674540', 'G4957792', 'G3905462', 'G1098748', 'G3884260', 'G3891968',
                      'G3875199', 'G9887197', 'G9885618', 'G9246916', 'G9534482', 'G0714321', 'G9874312', 'G9869381',
-                     'G9863409', 'G9855443', 'G3895343']
+                     'G9863409', 'G9855443', 'G3895343', 'G3803090']
     df = df[~(df['Pay_Number'].isin(gri_radiology))]
 
     sach_radiology = ['G0018392', 'G4905105', 'G1537652', 'G9405461', 'G9392106', 'G9241809', 'G4903501', 'G4915712',
                       'G9847152', 'G0685089', 'G9847151', 'G9847152', 'G0464627']
     df = df[~(df['Pay_Number'].isin(sach_radiology))]
+
+    # Amanda Parker - 03-11-20
+    ap20201103 = ['C1074326', 'C3020681', 'C3901769', 'C3904474', 'C390721X', 'C391755X', 'C9540725', 'G7055986',
+                  'G7071760',
+                  'G7089937', 'G7090862', 'G7091230', 'G7092555', 'G7098030', 'G7105126', 'G7112300', 'G7113188',
+                  'G7127308',
+                  'G7137540', 'G7152132', 'G7155077', 'G9193928', 'G9227288', 'G9380493', 'G9435816', 'G9446036',
+                  'G9515720',
+                  'G9858545', 'G9874129', 'G5892562', 'G5924391', 'G9837163', 'G9561056', 'G9107487', 'G3875997',
+                  'G5825806',
+                  'G0880205', 'G0860425', 'G0866733', 'C9540687', 'G7071949']
+    df = df[~(df['Pay_Number'].isin(ap20201103))]
 
     # Sector Level Exclusions
     df = df[~df['Sector/Directorate/HSCP'].isin(['Acute Corporate', 'Board Medical Director', 'Board Administration',
@@ -185,14 +290,80 @@ def GGCScope(df):
                                                  'Finance', 'Public Health'])]
     df = df[~((df['Sector/Directorate/HSCP'] == 'HR and OD') & (df['Sub-Directorate 1'] != 'Occupational Health'))]
 
+    # Sandra Quinn
+    df = df[~(df['Pay_Number'].isin(['G913090X', 'C3018830', 'G0171344', 'G0005079', 'G9209972', 'G9862157',
+                                     'G3854426', 'C2090112', 'G9850559', 'G5866448', 'G9850556', 'G9835914',
+                                     'G2354128', 'G9835172', 'G9840490', 'C2058464', 'G9205594', 'G9828395',
+                                     'G9849073', 'G9236074', 'G9220410', 'G9865462', 'G2998335', 'G0433187',
+                                     'G9829115']))]
+
+    # Lisa Dorrian - non time sensitive
+    df = df[~(df['Pay_Number'].isin(['G9828449', 'G9828443', 'G9829252', 'G9828922']))]
+
+    # craig broadfoot 28-10-20 - time sensitive
+    craig_broadfoot281020 = ['G9860114', 'G9888845', 'G9844999', 'G9844920', 'G9843272', 'G9851460', 'G9847464',
+                             'G3018970']
+    if learnpro_date < pd.to_datetime('01-01-21', dayfirst=True):
+        df = df[~(df['Pay_Number'].isin(craig_broadfoot281020))]
+
+    kim_kilgour281020 = ['G9831479', 'G9838034', 'G9842367']
+    if learnpro_date < pd.to_datetime('01-01-21', dayfirst=True):
+        df = df[~(df['Pay_Number'].isin(kim_kilgour281020))]
+        df = df[~(df['Pay_Number'].isin(['G7134622', 'G0129828']))]  # Annette Gibson
+        df = df[~(df['Pay_Number'] == 'G0028657')]  # Janice Naven
+        df = df[~(df['Pay_Number'] == 'C9561935')]  # Biereonwu, Isobel
+        df = df[~(df['Pay_Number'].isin(['G5880378', 'G7112750', 'G9448098', 'G9854574']))]  # Lorna Hill
+
+    df = df[~(df['Pay_Number'] == 'G9379711')]
+    df = df[~(df['Pay_Number'] == 'G7135025')]
+
+    fiona_taylor261120 = ['G9877976', 'G7094892', 'G0401110']
+    df = df[~(df['Pay_Number'].isin(fiona_taylor261120))]
+
+    alison_shields261120 = ['G9829869', 'G9828925', 'G9831118']
+
+    janis_young_temp = ['G9864540', 'G2348306', 'G933923X', 'G9833063', 'G9831963', 'G9832354', 'G9873283', 'G9833333',
+                        'G9832692', 'G9839500', 'G9832897', 'G9835222', 'G9833074', 'G9833065', 'G9832850', 'G3001687',
+                        'G9830338', 'G9832700', 'G9848801', 'G9836970', 'G9849219', 'G9373020']
+    if learnpro_date < pd.to_datetime('01-01-21', dayfirst=True):
+        df = df[~(df['Pay_Number'].isin(janis_young_temp))]
+
+    # Rosie Cherry 30-10-20
+    df = df[~(df['Pay_Number'].isin(['G8006431', 'G2986604', 'G7068212']))]
+
+    # Suzanne Catterall
+    suz_c_20201208 = ['G9837902', 'G0124915', 'G1107542', 'G7085680', 'G9832075', 'G7055153', 'G9168915', 'G9471901',
+                      'G9845794',
+                      'G9174362', 'G9869165', 'G7075995', 'G7135718', 'G9830410', 'G9837863', 'G9156879', 'G9860398',
+                      'G9324895', 'G9828157',
+                      'G9870472', 'G7116748', 'G1010379', 'G9433147', 'G9263942', 'G7090269', 'G9828858', 'G9152717',
+                      'G9225293',
+                      'G7140509', 'G1503456', 'G0006956', 'G9872219', 'G9849710', 'G7107781', 'G916197X', 'G1573322',
+                      'G9847439',
+                      'G9862629', 'G9870767']
+    df = df[~(df['Pay_Number'].isin(suz_c_20201208))]
+
+    # Patricia Doherty
+    pat_d_20201209 = ['G7137486', 'G0414956', 'G9874636', 'G2965941', 'G9838232', 'G92993562', 'G9878297', 'G0002894']
+    df = df[~(df['Pay_Number'].isin(pat_d_20201209))]
+
+    # Jean Still
+    df = df[~(df['Cost_Centre'] == 'G67062')]
+    df = df[~(df['Pay_Number'].isin(['G7132980', 'G7160968', 'G9828861']))]
+
+    # Margaret Valenti 30-10-20
+    df = df[~(df['Cost_Centre'].isin(['G20515', 'G22515']))]
+
     # Job Family Exclusions
     df = df[~df['Job_Family'].isin(['Administrative Services', 'Personal and Social Care', 'Executive'])]
     df = df[~((df['Job_Family'] == 'Other Therapeutic') & (df['Sub_Job_Family'] != 'Optometry'))]
 
+    df = df[~((df['Area'] == 'Partnerships') & (
+        df['Sub_Job_Family'].isin(['Speech and Language Therapy', 'Speech And Language Therapy'])))]
+
     # Sub job family exclusions
     df = df[~(df['Sub_Job_Family'].isin(
-        ['Speech and Language Therapy', 'Speech And Language Therapy', 'Arts Therapies', 'Dietetics',
-         'AHP Training/Administration', 'Generic Therapies']))]
+        ['Arts Therapies', 'Dietetics', 'AHP Training/Administration', 'Generic Therapies']))]
 
     # Health Visitors
     df = df[~((df['Sub_Job_Family'] == 'Health Visitor Nursing') & (df['Pay_Band'] != '5'))]
@@ -212,6 +383,13 @@ def GGCScope(df):
               (df['department'].isin(
                   ['Nur -Clinical Co-Ordinators', 'Nur -Practice Development', 'Iv Fluids Protocol'])))]
 
+    df = df[~(df['Pay_Number'].isin(['G7132980', 'G7160968', 'G9828861', 'G9828708']))]
+    # Another Marisa McAllister one - 20-10-20
+    df = df[~(df['Pay_Number'].isin(['G9856432', 'G0405019']))]
+
+    # re-adding someone to scope test
+    print(df_orig[df_orig['Pay_Number'] == 'G0001291'])
+    df = df.append(df_orig[df_orig['Pay_Number'] == 'G0001291'], ignore_index=True)
     print(f'GGC Overall: {len(df_orig)},  GGC Inscope: {len(df)}')
 
     return df
@@ -238,9 +416,20 @@ def take_in_dir(list_of_modules):
 
     user_ids = []
 
+    # update eESS dictionary
+
+    eESS_lookup = pd.read_csv(dirname + '/' + 'Pay Number to Assignment Number.csv', encoding='utf-16', sep='\t')
+    eESS_lookup['Assignment Number'] = eESS_lookup['Assignment Number'].str.slice(0, 8)
+    eESS_lookup.dropna(axis=0, inplace=True)
+    eESS_lookup['Assignment Number'] = eESS_lookup['Assignment Number'].astype(int)
+    eESS_lookup = dict(zip(eESS_lookup['Assignment Number'], eESS_lookup['Payroll Number']))
+    with open('C:/Learnpro_Extracts/eesslookup.txt', 'w') as filehandler:
+        print(eESS_lookup, file=filehandler)
+
     # iterate through directory
     for file in os.listdir(dirname):
         # operate on the LEARNPRO files first
+
         if 'LEARNPRO' in file:
 
             lp_count += 1
@@ -338,7 +527,7 @@ def sd_merge(df):
     df['Headcount'] = 1
 
     # TODO point this somewhere else
-    sd = pd.read_excel('W:/Staff Downloads/2020-08 - Staff Download.xlsx')
+    sd = pd.read_excel('W:/Staff Downloads/2020-11 - Staff Download.xlsx')
 
     # Cleaning step - vital for merge to work properly - ID number must be on both sides of merge
     sd = sd.rename(columns={'Pay_Number': 'ID Number', 'Forename': 'First', 'Surname': 'Last'})
@@ -367,47 +556,56 @@ def produce_files(df):
              'Surname', 'Forename', 'Base', 'Job_Family', 'Sub_Job_Family',
              'Post_Descriptor', 'WTE', 'Contract_Description', 'NI_Number',
              'Date_Started', 'Job_Description', 'Pay_Band', 'GGC Module', 'GGC Date',
-             'GGC Source', 'NES Module', 'NES Date', 'Compliant']]
+             'GGC Source', 'NES Module', 'NES Date']]
 
     ggc_piv = pd.pivot_table(df, index=['Area', 'Sector/Directorate/HSCP'], columns='GGC Module', values='Pay_Number',
-                             aggfunc='count', margins=True,fill_value=0, margins_name='All Staff')
+                             aggfunc='count', margins=True, fill_value=0, margins_name='All Staff')
 
-
-    ggc_piv['Not at work ≥ 28 days'] = ggc_piv['Maternity Leave'] + ggc_piv['Suspended'] + ggc_piv['Secondment'] + \
-                             ggc_piv['≥28 days Absence']
+    ggc_piv['Not at work ≥ 28 days'] = ggc_piv['Maternity Leave'] + ggc_piv['Suspended'] + ggc_piv[
+        '≥28 days Absence']  # ggc_piv['Secondment'] + \
 
     ggc_piv['In scope'] = ggc_piv['Complete'] + ggc_piv['Expired'] + ggc_piv['No Account'] + ggc_piv['Not undertaken'] + \
                           ggc_piv['Not at work ≥ 28 days']
-    ggc_piv['Compliance %'] = ((ggc_piv['Complete'] + ggc_piv['Not at work ≥ 28 days']) / ggc_piv['In scope'] * 100).round(2)
-    ggc_piv.drop(inplace=True, columns=['All Staff', 'Secondment', 'Suspended', 'Out Of Scope', 'Maternity Leave',
+    ggc_piv['Compliance %'] = (
+                (ggc_piv['Complete'] + ggc_piv['Not at work ≥ 28 days']) / ggc_piv['In scope'] * 100).round(2)
+    ggc_piv.drop(inplace=True, columns=['All Staff', 'Suspended', 'Out Of Scope', 'Maternity Leave',  # 'Secondment',
                                         '≥28 days Absence'])
     ggc_piv = ggc_piv[ggc_piv['Compliance %'] > 0.01]
 
     nes_piv = pd.pivot_table(df, index=['Area', 'Sector/Directorate/HSCP'], columns='NES Module', values='Pay_Number',
                              aggfunc='count', margins=True, margins_name='All Staff', fill_value=0)
 
-
-    nes_piv['Not at work ≥ 28 days'] = nes_piv['Maternity Leave'] + nes_piv['Suspended'] + nes_piv['Secondment'] +\
-                             nes_piv['≥28 days Absence']
+    nes_piv['Not at work ≥ 28 days'] = nes_piv['Maternity Leave'] + nes_piv['Suspended'] + nes_piv['Secondment'] + \
+                                       nes_piv['≥28 days Absence']
 
     nes_piv['In scope'] = (
-                nes_piv['Complete'] + nes_piv['Expired'] + nes_piv['No Account'] + nes_piv['Not undertaken'] +
-                nes_piv['Not at work ≥ 28 days']).round(2)
+            nes_piv['Complete'] + nes_piv['Expired'] + nes_piv['No Account'] + nes_piv['Not undertaken'] +
+            nes_piv['Not at work ≥ 28 days']).round(2)
 
-    nes_piv['Compliance %'] = ((nes_piv['Complete'] + nes_piv['Not at work ≥ 28 days']) / nes_piv['In scope'] * 100).round(2)
-    nes_piv.drop(inplace=True, columns=['All Staff', 'Secondment', 'Suspended', 'Out Of Scope', 'Maternity Leave',
+    nes_piv['Compliance %'] = (
+                (nes_piv['Complete'] + nes_piv['Not at work ≥ 28 days']) / nes_piv['In scope'] * 100).round(2)
+    nes_piv.drop(inplace=True, columns=['All Staff', 'Suspended', 'Out Of Scope', 'Maternity Leave',  # 'Secondment',
                                         '≥28 days Absence'])
     nes_piv = nes_piv[nes_piv['Compliance %'] > 0.01]
 
-
     # These lines below hide the type of absence for privacy reasons. If you want to debug, then comment these out.
-    df.loc[((df['NES Module'].isin(['Secondment', 'Out of Scope', 'Maternity Leave', 'Suspended', '≥28 days Absence']))),
-           'NES Module'] = 'Not at work ≥ 28 days'
-    df.loc[((df['GGC Module'].isin(['Secondment', 'Out of Scope', 'Maternity Leave', 'Suspended', '≥28 days Absence']))),
-           'GGC Module'] = 'Not at work ≥ 28 days'
+    df.loc[
+        ((df['NES Module'].isin(['Secondment', 'Out of Scope', 'Maternity Leave', 'Suspended', '≥28 days Absence']))),
+        'NES Module'] = 'Not at work ≥ 28 days'
+    df.loc[
+        ((df['GGC Module'].isin(['Secondment', 'Out of Scope', 'Maternity Leave', 'Suspended', '≥28 days Absence']))),
+        'GGC Module'] = 'Not at work ≥ 28 days'
+
+    df['Compliant'] = ''
+
+    df['Compliant'].loc[(df['GGC Module'].isin(['Complete', 'Not at work ≥ 28 days'])) & (
+    (df['NES Module'].isin(['Out Of Scope', 'Complete',
+                            'Not at work ≥ 28 days'])))] = 1
+    df['Compliant'].loc[(df['Compliant'] == '')] = 0
 
     # write to book
-    with pd.ExcelWriter('W:/Learnpro/HSE Sharps and Skins/'+learnpro_date.strftime('%Y%m%d')+' - HSE Sharps.xlsx') as writer:
+    with pd.ExcelWriter(
+            'W:/Learnpro/HSE Sharps and Skins/' + learnpro_date.strftime('%Y%m%d') + ' - HSE Sharps.xlsx') as writer:
         df.to_excel(writer, sheet_name='Export', index=False)
         # TODO add pivot
         # piv.to_excel(writer, sheet_name='pivot')
@@ -415,10 +613,18 @@ def produce_files(df):
         nes_piv.to_excel(writer, sheet_name='NES Pivot')
     writer.save()
 
-    # HSE Named Lists sharepoint upload:
-    df.drop(columns=['Pay_Number', 'WTE', 'Contract_Description', 'NI_Number', 'Date_Started', 'Job_Description', 'Post_Descriptor',
-                     'Pay_Band'], inplace=True)
-    with pd.ExcelWriter('W:/Learnpro/Named Lists HSE/'+learnpro_date.strftime('%Y-%m-%d')+'/'+learnpro_date.strftime('%Y%m%d')+' - HSE Sharps.xlsx') as writer:
+    df_ernie = df.drop(columns=['WTE', 'Contract_Description', 'NI_Number', 'Date_Started', 'Job_Description',
+                                'Post_Descriptor',
+                                'Pay_Band', 'Compliant'])
+    df_ernie.to_excel('W:/Learnpro/ernie_' + learnpro_date.strftime('%Y%m%d') + '.xlsx', index=False)
+
+    # HSE Named Lists sharepoint upload - "Compliant Column removed per Cameron's instructions on 09-10-20:
+    df.drop(columns=['Pay_Number', 'WTE', 'Contract_Description', 'NI_Number', 'Date_Started', 'Job_Description',
+                     'Post_Descriptor',
+                     'Pay_Band', 'Compliant'], inplace=True)
+    with pd.ExcelWriter(
+            'W:/Learnpro/Named Lists HSE/' + learnpro_date.strftime('%Y-%m-%d') + '/' + learnpro_date.strftime(
+                    '%Y%m%d') + ' - HSE Sharps.xlsx') as writer:
         df.to_excel(writer, sheet_name='Export', index=False)
         # TODO add pivot
         # piv.to_excel(writer, sheet_name='pivot')
@@ -499,7 +705,6 @@ def check_compliance(df, users):
     df['GGC'].loc[(df['GGC'].isnull()) | (df['GGC'] == "")] = 'Not undertaken'
     df['NES'].loc[(df['NES'].isnull()) | (df['NES'] == "")] = 'Not undertaken'
 
-
     # deal with not at work staff
     df.loc[((df['ID Number'].isin(long_abs)) & (
         ~df['GGC'].isin(['Complete', 'Out Of Scope']))), 'GGC'] = '≥28 days Absence'
@@ -518,15 +723,11 @@ def check_compliance(df, users):
     df.loc[((df['ID Number'].isin(susp)) & (
         ~df['NES'].isin(['Complete', 'Out Of Scope']))), 'NES'] = 'Suspended'
 
-    df['Compliant'] = ''
-    df['Compliant'].loc[(df['GGC'] == 'Complete') & ((df['NES'].isin(['Out Of Scope', 'Complete'])))] = 1
-    df['Compliant'].loc[(df['Compliant'] == '')] = 0
-
     # wrap up and produce final files
     produce_files(df)
 
 
-sd = pd.read_excel('W:/Staff Downloads/2020-08 - Staff Download.xlsx')
+sd = pd.read_excel('W:/Staff Downloads/2020-11 - Staff Download.xlsx')
 sd_list = sd['Pay_Number'].tolist()
 
 ggc_oos, nes_oos = getHSEScopeFile()
